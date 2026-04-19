@@ -1,25 +1,40 @@
+import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, UserPlus, LogIn, LayoutDashboard } from 'lucide-react';
+import { Home, UserPlus, LogIn, LayoutDashboard, Menu, X } from 'lucide-react';
 import DarkModeToggle from './DarkModeToggle';
 
 export default function Navbar() {
+  const [menuOpen, setMenuOpen] = useState(false);
+
   return (
     <header className="navbar">
       <div className="brand">Smart Job Alert</div>
-      <nav>
-        <NavLink to="/" end>
+      <div className="navbar-controls">
+        <button
+          className="navbar-toggle"
+          onClick={() => setMenuOpen((open) => !open)}
+          aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+          type="button"
+        >
+          {menuOpen ? <X size={20} /> : <Menu size={20} />}
+        </button>
+        <DarkModeToggle />
+      </div>
+
+      <nav className={`navbar-menu ${menuOpen ? 'open' : ''}`}>
+        <NavLink to="/" end onClick={() => setMenuOpen(false)}>
           <Home size={18} />
           Home
         </NavLink>
-        <NavLink to="/signup">
+        <NavLink to="/signup" onClick={() => setMenuOpen(false)}>
           <UserPlus size={18} />
           Signup
         </NavLink>
-        <NavLink to="/login">
+        <NavLink to="/login" onClick={() => setMenuOpen(false)}>
           <LogIn size={18} />
           Login
         </NavLink>
-        <NavLink to="/dashboard">
+        <NavLink to="/dashboard" onClick={() => setMenuOpen(false)}>
           <LayoutDashboard size={18} />
           Dashboard
         </NavLink>
