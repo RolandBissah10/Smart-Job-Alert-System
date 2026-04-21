@@ -3,9 +3,11 @@ from typing import List, Optional
 
 
 class UserSignup(BaseModel):
+    username: str
     email: EmailStr
+    contact: str
     password: str
-    keywords: List[str]
+    keywords: Optional[List[str]] = []
     location: Optional[str] = "remote"
 
 

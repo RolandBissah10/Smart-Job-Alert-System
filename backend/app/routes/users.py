@@ -26,7 +26,9 @@ def signup(user: UserSignup):
         raise HTTPException(status_code=400, detail="User already exists")
 
     user_record = {
+        "username": user.username,
         "email": user.email,
+        "contact": user.contact,
         "password": hash_password(user.password),
         "keywords": [kw.strip().lower() for kw in user.keywords if kw.strip()],
         "location": user.location,

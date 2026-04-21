@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { login } from '../services/api';
-import { Mail, Lock, LogIn } from 'lucide-react';
+import { Mail, Lock, LogIn, Eye, EyeOff } from 'lucide-react';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState('');
   const navigate = useNavigate();
 
@@ -41,7 +42,22 @@ export default function Login() {
               <Lock size={18} />
               Password
             </span>
-            <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" required />
+            <div className="password-wrapper">
+              <input
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                type={showPassword ? 'text' : 'password'}
+                required
+              />
+              <button
+                type="button"
+                className="password-toggle"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                onClick={() => setShowPassword((v) => !v)}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </label>
           <button type="submit" className="button">
             <LogIn size={18} />
@@ -49,6 +65,12 @@ export default function Login() {
           </button>
         </form>
         {message && <p className="alert">{message}</p>}
+        <p className="auth-footer">
+          <a href="/forgot-password">Forgot password?</a>
+        </p>
+        <p className="auth-footer">
+          Don&apos;t have an account? <a href="/signup">Sign up</a>
+        </p>
       </div>
     </div>
   );

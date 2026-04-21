@@ -5,6 +5,7 @@ python-dotenv
 beautifulsoup4
 requests
 passlib[bcrypt]
+bcrypt==4.0.1
 python-jose[cryptography]
 apscheduler
 celery
