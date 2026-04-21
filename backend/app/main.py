@@ -18,6 +18,13 @@ app.include_router(auth.router)
 app.include_router(jobs.router)
 app.include_router(saved_jobs.router)
 
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"Internal server error: {str(exc)}"},
+    )
+
 @app.on_event("startup")
 def startup_event():
     if not scheduler.running:
