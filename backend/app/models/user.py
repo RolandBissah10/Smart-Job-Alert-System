@@ -2,13 +2,18 @@ from pydantic import BaseModel, EmailStr
 from typing import List, Optional
 
 
+class UserProfile(BaseModel):
+    tech_stack: Optional[List[str]] = []
+    roles: Optional[List[str]] = []
+    experience_level: Optional[str] = None
+    location: Optional[str] = "Remote"
+    job_type: Optional[str] = "Full-time"
+
+
 class UserSignup(BaseModel):
     username: str
     email: EmailStr
-    contact: str
     password: str
-    keywords: Optional[List[str]] = []
-    location: Optional[str] = "remote"
 
 
 class UserLogin(BaseModel):
@@ -17,7 +22,5 @@ class UserLogin(BaseModel):
 
 
 class UserUpdate(BaseModel):
-    keywords: Optional[List[str]] = None
-    location: Optional[str] = None
     is_active: Optional[bool] = None
     plan: Optional[str] = None

@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signup } from '../services/api';
-import { User, Mail, Phone, Lock, UserPlus, Eye, EyeOff } from 'lucide-react';
+import { User, Mail, Lock, UserPlus, Eye, EyeOff } from 'lucide-react';
 
 export default function Signup() {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
-  const [contact, setContact] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -26,8 +25,8 @@ export default function Signup() {
     }
 
     try {
-      await signup({ username, email, contact, password, keywords: [], location: 'remote' });
-      setSuccess('Account created successfully. Please log in.');
+      await signup({ username, email, password });
+      setSuccess('Account created! Redirecting to login...');
       setTimeout(() => navigate('/login'), 1200);
     } catch (err) {
       setError(err.message);
@@ -38,46 +37,31 @@ export default function Signup() {
     <div className="page page-center">
       <div>
         <h1>Create your account</h1>
-        <p>Join thousands of professionals getting notified about their dream jobs.</p>
+        <p>Sign up in seconds. Set up your job preferences after login.</p>
         <form onSubmit={handleSubmit} className="form-grid">
 
-          {/* Username */}
           <label>
             <span><User size={18} /> Username</span>
             <input
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               type="text"
-              placeholder="johndoe"
+              placeholder="e.g. Roland"
               required
             />
           </label>
 
-          {/* Email */}
           <label>
             <span><Mail size={18} /> Email</span>
             <input
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               type="email"
-              placeholder="john@example.com"
+              placeholder="you@example.com"
               required
             />
           </label>
 
-          {/* Contact */}
-          <label>
-            <span><Phone size={18} /> Contact</span>
-            <input
-              value={contact}
-              onChange={(e) => setContact(e.target.value)}
-              type="tel"
-              placeholder="+1 555 000 0000"
-              required
-            />
-          </label>
-
-          {/* Password */}
           <label>
             <span><Lock size={18} /> Password</span>
             <div className="password-wrapper">
@@ -98,7 +82,6 @@ export default function Signup() {
             </div>
           </label>
 
-          {/* Confirm Password */}
           <label>
             <span><Lock size={18} /> Confirm Password</span>
             <div className="password-wrapper">
@@ -121,7 +104,7 @@ export default function Signup() {
 
           <button type="submit" className="button">
             <UserPlus size={18} />
-            Sign Up
+            Create Account
           </button>
         </form>
 

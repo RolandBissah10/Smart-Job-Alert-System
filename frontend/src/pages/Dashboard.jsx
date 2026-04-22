@@ -1,15 +1,35 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchJobs, runPipeline, getSavedJobs } from '../services/api';
-import JobCard from '../components/JobCard';
-import { RefreshCw, Play, Clock, Heart } from 'lucide-react';
+import {
+  LayoutDashboard, User, Briefcase, Heart,
+  Bell, BarChart2, LogOut, Menu, X, Sun, Moon,
+} from 'lucide-react';
+import Overview from './dashboard/Overview';
+import Profile from './dashboard/Profile';
+import Jobs from './dashboard/Jobs';
+import Saved from './dashboard/Saved';
+import Alerts from './dashboard/Alerts';
+import Analytics from './dashboard/Analytics';
+
+const NAV_ITEMS = [
+  { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+  { id: 'profile', label: 'Profile', icon: User },
+  { id: 'jobs', label: 'Job Feed', icon: Briefcase },
+  { id: 'saved', label: 'Saved', icon: Heart },
+  { id: 'alerts', label: 'Alerts', icon: Bell },
+  { id: 'analytics', label: 'Analytics', icon: BarChart2 },
+];
+
+const SECTIONS = { Overview, Profile, Jobs, Saved, Alerts, Analytics };
 
 export default function Dashboard() {
-  const [jobs, setJobs] = useState([]);
-  const [savedJobs, setSavedJobs] = useState([]);
-  const [status, setStatus] = useState('');
-  const [error, setError] = useState('');
-  const [view, setView] = useState('latest'); // 'latest' or 'saved'
+  const [section, setSection] = useState('overview');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
+  const [darkMode, setDarkMode] = useState(
+    document.documentElement.getAttribute('data-theme') === 'dark'
+  );
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -18,100 +38,90 @@ export default function Dashboard() {
       navigate('/login');
       return;
     }
-    loadSavedJobs();
+    setEmail(localStorage.getItem('userEmail') || '');
+    setUsername(localStorage.getItem('username') || '');
   }, [navigate]);
 
-  const loadJobs = async () => {
-    setStatus('Loading jobs...');
-    setError('');
-
-    try {
-      const data = await fetchJobs();
-      setJobs(data.new_jobs || []);
-      setStatus(`Fetched ${data.count} new jobs.`);
-    } catch (err) {
-      setError(err.message);
-      setStatus('Unable to fetch jobs.');
-    }
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('userEmail');
+    navigate('/login');
   };
 
-  const loadSavedJobs = async () => {
-    try {
-      const data = await getSavedJobs();
-      setSavedJobs(data);
-    } catch (err) {
-      console.error('Failed to load saved jobs:', err);
-    }
+  const toggleDark = () => {
+    const next = !darkMode;
+    setDarkMode(next);
+    document.documentElement.setAttribute('data-theme', next ? 'dark' : 'light');
   };
 
-  const handleRunPipeline = async () => {
-    setStatus('Running pipeline...');
-    setError('');
-    try {
-      const data = await runPipeline();
-      setStatus(`Delivered ${data.delivered.length} alerts.`);
-    } catch (err) {
-      setError(err.message);
-      setStatus('Pipeline failed.');
-    }
-  };
-
-  const handleSaveToggle = (job) => {
-    loadSavedJobs(); // Refresh saved jobs
-  };
-
-  const isJobSaved = (job) => {
-    return savedJobs.some(saved => saved.job_id === (job._id || job.url));
-  };
-
-  const displayedJobs = view === 'saved' ? savedJobs.map(saved => ({ ...saved, _id: saved.job_id })) : jobs;
+  const SectionComponent = {
+    overview: Overview,
+    profile: Profile,
+    jobs: Jobs,
+    saved: Saved,
+    alerts: Alerts,
+    analytics: Analytics,
+  }[section];
 
   return (
-    <div className="page">
-      <div className="dashboard-header">
-        <div>
-          <h2>Dashboard</h2>
-          <p>Monitor the latest scraped jobs and manage your saved ones.</p>
-        </div>
-        <div className="button-row">
-          <button className="button" onClick={loadJobs}>
-            <RefreshCw size={16} />
-            Fetch Jobs
-          </button>
-          <button className="button button-secondary" onClick={handleRunPipeline}>
-            <Play size={16} />
-            Run Pipeline
+    <div className="dashboard-layout">
+      {/* Sidebar */}
+      <aside className={`dashboard-sidebar ${sidebarOpen ? 'open' : ''}`}>
+        <div className="sidebar-brand">
+          <span>Smart Job Alert</span>
+          <button className="sidebar-close" onClick={() => setSidebarOpen(false)}>
+            <X size={20} />
           </button>
         </div>
-      </div>
 
-      <div className="view-tabs">
-        <button className={`tab ${view === 'latest' ? 'active' : ''}`} onClick={() => setView('latest')}>
-          <Clock size={16} />
-          Latest Jobs
-        </button>
-        <button className={`tab ${view === 'saved' ? 'active' : ''}`} onClick={() => setView('saved')}>
-          <Heart size={16} />
-          Saved Jobs ({savedJobs.length})
-        </button>
-      </div>
+        <nav className="sidebar-nav">
+          {NAV_ITEMS.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              className={`sidebar-item ${section === id ? 'active' : ''}`}
+              onClick={() => { setSection(id); setSidebarOpen(false); }}
+            >
+              <Icon size={20} />
+              <span>{label}</span>
+            </button>
+          ))}
+        </nav>
 
-      {status && <p className="status-text">{status}</p>}
-      {error && <p className="alert alert-error">{error}</p>}
+        <div className="sidebar-footer">
+          {username && (
+            <div className="sidebar-welcome">Welcome, {username}!</div>
+          )}
+          <div className="sidebar-user">{email}</div>
+          <div className="sidebar-footer-actions">
+            <button className="sidebar-icon-btn" onClick={toggleDark} title="Toggle theme">
+              {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+            <button className="sidebar-icon-btn sidebar-logout" onClick={handleLogout}>
+              <LogOut size={18} />
+              <span>Logout</span>
+            </button>
+          </div>
+        </div>
+      </aside>
 
-      <div className="jobs-grid">
-        {displayedJobs.length === 0 ? (
-          <p>{view === 'saved' ? 'No saved jobs yet.' : 'No jobs loaded yet.'}</p>
-        ) : (
-          displayedJobs.map((job, index) => (
-            <JobCard
-              key={job._id || job.url || index}
-              job={job}
-              isSaved={isJobSaved(job)}
-              onSaveToggle={handleSaveToggle}
-            />
-          ))
-        )}
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />
+      )}
+
+      {/* Main content */}
+      <div className="dashboard-content">
+        <div className="dashboard-topbar">
+          <button className="sidebar-menu-btn" onClick={() => setSidebarOpen(true)}>
+            <Menu size={22} />
+          </button>
+          <h2 className="topbar-title">
+            {NAV_ITEMS.find((i) => i.id === section)?.label}
+          </h2>
+        </div>
+        <div className="dashboard-section">
+          <SectionComponent onNavigate={setSection} />
+        </div>
       </div>
     </div>
   );

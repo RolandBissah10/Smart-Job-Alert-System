@@ -35,8 +35,8 @@ export default function Home() {
         </div>
 
         <div className="button-row">
-          <Link className="button" to="/signup">Get Started Free</Link>
-          <Link className="button button-secondary" to="/login">Sign In</Link>
+          <Link className="button" to="/signup" style={{ textDecoration: 'none' }}>Get Started Free</Link>
+          <Link className="button button-secondary" to="/login" style={{ textDecoration: 'none' }}>Sign In</Link>
         </div>
       </div>
     </div>

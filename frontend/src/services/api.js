@@ -35,8 +35,27 @@ export function login(credentials) {
   });
 }
 
+export function getMe() {
+  return request('/users/me');
+}
+
+export function updateProfile(profile) {
+  return request('/users/profile', {
+    method: 'PUT',
+    body: JSON.stringify(profile),
+  });
+}
+
+export function getDashboard() {
+  return request('/dashboard/');
+}
+
 export function fetchJobs() {
   return request('/jobs/scrape');
+}
+
+export function getJobFeed() {
+  return request('/jobs/feed');
 }
 
 export function runPipeline() {

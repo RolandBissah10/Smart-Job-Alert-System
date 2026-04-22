@@ -5,6 +5,7 @@ import DarkModeToggle from './DarkModeToggle';
 
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const isLoggedIn = !!localStorage.getItem('token');
 
   return (
     <header className="navbar">
@@ -26,18 +27,24 @@ export default function Navbar() {
           <Home size={18} />
           Home
         </NavLink>
-        <NavLink to="/signup" onClick={() => setMenuOpen(false)}>
-          <UserPlus size={18} />
-          Signup
-        </NavLink>
-        <NavLink to="/login" onClick={() => setMenuOpen(false)}>
-          <LogIn size={18} />
-          Login
-        </NavLink>
-        <NavLink to="/dashboard" onClick={() => setMenuOpen(false)}>
-          <LayoutDashboard size={18} />
-          Dashboard
-        </NavLink>
+        {!isLoggedIn && (
+          <NavLink to="/signup" onClick={() => setMenuOpen(false)}>
+            <UserPlus size={18} />
+            Signup
+          </NavLink>
+        )}
+        {!isLoggedIn && (
+          <NavLink to="/login" onClick={() => setMenuOpen(false)}>
+            <LogIn size={18} />
+            Login
+          </NavLink>
+        )}
+        {isLoggedIn && (
+          <NavLink to="/dashboard" onClick={() => setMenuOpen(false)}>
+            <LayoutDashboard size={18} />
+            Dashboard
+          </NavLink>
+        )}
         <DarkModeToggle />
       </nav>
     </header>

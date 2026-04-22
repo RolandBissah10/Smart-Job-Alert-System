@@ -17,6 +17,8 @@ export default function Login() {
     try {
       const data = await login({ email, password });
       localStorage.setItem('token', data.access_token);
+      localStorage.setItem('userEmail', email);
+      localStorage.setItem('username', data.username || '');
       setMessage('Login successful. Redirecting...');
       setTimeout(() => navigate('/dashboard'), 800);
     } catch (err) {
