@@ -917,7 +917,8 @@ main.dashboard-main-wrapper {
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 240px));
+  justify-content: center;
   gap: 20px;
   margin-bottom: 32px;
 }
@@ -956,6 +957,10 @@ main.dashboard-main-wrapper {
   font-weight: 800;
   color: var(--text);
   line-height: 1;
+}
+
+.stat-value-sm {
+  font-size: 1.1rem;
 }
 
 .stat-label {
@@ -1039,7 +1044,9 @@ main.dashboard-main-wrapper {
 /* ==================== WIZARD ==================== */
 
 .profile-page {
-  max-width: 640px;
+  max-width: 960px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .wizard-header {
@@ -1121,7 +1128,6 @@ main.dashboard-main-wrapper {
   border-radius: var(--radius-lg);
   padding: 32px;
   margin-bottom: 24px;
-  min-height: 240px;
 }
 
 .wizard-body h3 {
@@ -1214,6 +1220,108 @@ main.dashboard-main-wrapper {
 .profile-input:focus {
   outline: none;
   border-color: var(--primary);
+}
+
+.profile-select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 40px;
+}
+
+/* ==================== TECH CATEGORY ACCORDION ==================== */
+
+.tech-categories {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.tech-category {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.tech-category-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--surface);
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text);
+  transition: background 0.15s ease;
+  text-align: left;
+}
+
+.tech-category-header:hover {
+  background: var(--accent);
+}
+
+.tech-category-label {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.tech-category-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.tech-category-badge {
+  background: var(--primary);
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 9999px;
+}
+
+.tech-category-chevron {
+  color: var(--text-light);
+  transition: transform 0.2s ease;
+}
+
+.tech-category-chevron.expanded {
+  transform: rotate(180deg);
+}
+
+.tech-category-chips {
+  padding: 12px 16px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--background);
+  margin-top: 0;
+}
+
+/* ==================== CUSTOM TECH ROW ==================== */
+
+.custom-tech-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
+
+.custom-tech-row .profile-input {
+  flex: 1;
+  max-width: none;
+  margin-top: 0;
+}
+
+.chip-custom {
+  background: #7c3aed;
+  border-color: #7c3aed;
 }
 
 /* ==================== SECTION HEADER ==================== */

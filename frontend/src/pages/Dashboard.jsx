@@ -20,10 +20,10 @@ const NAV_ITEMS = [
   { id: 'analytics', label: 'Analytics', icon: BarChart2 },
 ];
 
-const SECTIONS = { Overview, Profile, Jobs, Saved, Alerts, Analytics };
-
 export default function Dashboard() {
-  const [section, setSection] = useState('overview');
+  const [section, setSection] = useState(
+    () => localStorage.getItem('dashboardSection') || 'overview'
+  );
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
@@ -42,9 +42,19 @@ export default function Dashboard() {
     setUsername(localStorage.getItem('username') || '');
   }, [navigate]);
 
+  const handleSectionChange = (id) => {
+    setSection(id);
+    localStorage.setItem('dashboardSection', id);
+    setSidebarOpen(false);
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('userEmail');
+    localStorage.removeItem('username');
+    localStorage.removeItem('dashboardSection');
+    localStorage.removeItem('customTechs');
+    localStorage.removeItem('customRoles');
     navigate('/login');
   };
 
@@ -79,7 +89,7 @@ export default function Dashboard() {
             <button
               key={id}
               className={`sidebar-item ${section === id ? 'active' : ''}`}
-              onClick={() => { setSection(id); setSidebarOpen(false); }}
+              onClick={() => handleSectionChange(id)}
             >
               <Icon size={20} />
               <span>{label}</span>
@@ -120,7 +130,7 @@ export default function Dashboard() {
           </h2>
         </div>
         <div className="dashboard-section">
-          <SectionComponent onNavigate={setSection} />
+          <SectionComponent onNavigate={handleSectionChange} />
         </div>
       </div>
     </div>

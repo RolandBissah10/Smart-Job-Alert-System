@@ -52,7 +52,7 @@ export default function Analytics() {
         <div className="stat-card">
           <div className="stat-icon"><Zap size={24} /></div>
           <div className="stat-info">
-            <span className="stat-value">{hasProfile ? 'Active' : 'Inactive'}</span>
+            <span className="stat-value stat-value-sm">{hasProfile ? 'Active' : 'Inactive'}</span>
             <span className="stat-label">Matching</span>
           </div>
         </div>

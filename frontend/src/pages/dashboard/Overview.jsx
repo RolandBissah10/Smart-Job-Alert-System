@@ -72,7 +72,7 @@ export default function Overview({ onNavigate }) {
         <div className="stat-card">
           <div className="stat-icon"><TrendingUp size={24} /></div>
           <div className="stat-info">
-            <span className="stat-value">{data?.profile_complete ? 'Active' : 'Pending'}</span>
+            <span className="stat-value stat-value-sm">{data?.profile_complete ? 'Active' : 'Pending'}</span>
             <span className="stat-label">Match Status</span>
           </div>
         </div>
