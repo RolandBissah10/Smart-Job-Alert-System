@@ -22,22 +22,26 @@ def get_dashboard(authorization: str = Header(None)):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    user_id = user["_id"]
     profile = user.get("profile", {})
     profile_complete = bool(profile.get("tech_stack") or profile.get("roles"))
 
     saved_count = saved_jobs_collection.count_documents({"user_email": email})
-    alerts_count = alerts_collection.count_documents({"user_email": email})
+    alerts_count = alerts_collection.count_documents({"user_id": user_id})
     total_jobs = jobs_collection.count_documents({})
 
-    recent_alerts = list(
-        alerts_collection.find({"user_email": email}).sort("sent_at", -1).limit(5)
+    recent_alerts_raw = list(
+        alerts_collection.find({"user_id": user_id}).sort("sent_at", -1).limit(10)
     )
-    for a in recent_alerts:
-        a["_id"] = str(a["_id"])
-        if "job_id" in a:
-            a["job_id"] = str(a["job_id"])
-        if "user_id" in a:
-            a["user_id"] = str(a["user_id"])
+    recent_alerts = []
+    for a in recent_alerts_raw:
+        recent_alerts.append({
+            "_id": str(a["_id"]),
+            "job_title": a.get("job_title", "Job alert sent"),
+            "job_company": a.get("job_company", ""),
+            "job_url": a.get("job_url", ""),
+            "sent_at": a.get("sent_at"),
+        })
 
     return {
         "email": email,

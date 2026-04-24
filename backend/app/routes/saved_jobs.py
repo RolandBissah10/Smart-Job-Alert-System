@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Header
 from pydantic import BaseModel
-from app.db.database import saved_jobs_collection
+from bson import ObjectId
+from app.db.database import saved_jobs_collection, jobs_collection
 from app.auth import verify_access_token
 from datetime import datetime
 
@@ -38,10 +39,23 @@ def save_job(body: SaveJobRequest, authorization: str = Header(None)):
 @router.get("/")
 def get_saved_jobs(authorization: str = Header(None)):
     email = _require_auth(authorization)
-    saved = list(saved_jobs_collection.find({"user_email": email}))
-    for item in saved:
-        item["_id"] = str(item["_id"])
-    return saved
+    saved_records = list(saved_jobs_collection.find({"user_email": email}))
+
+    result = []
+    for record in saved_records:
+        job_id_str = record.get("job_id", "")
+        try:
+            job = jobs_collection.find_one({"_id": ObjectId(job_id_str)})
+        except Exception:
+            job = None
+        if not job:
+            continue
+        job["_id"] = str(job["_id"])
+        job["job_id"] = job_id_str
+        job["saved_at"] = record.get("saved_at")
+        result.append(job)
+
+    return result
 
 
 @router.delete("/{job_id}")

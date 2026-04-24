@@ -24,3 +24,7 @@ class UserLogin(BaseModel):
 class UserUpdate(BaseModel):
     is_active: Optional[bool] = None
     plan: Optional[str] = None
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: str

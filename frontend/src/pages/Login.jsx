@@ -17,6 +17,7 @@ export default function Login() {
     try {
       const data = await login({ email, password });
       localStorage.setItem('token', data.access_token);
+      localStorage.setItem('refreshToken', data.refresh_token);
       localStorage.setItem('userEmail', email);
       localStorage.setItem('username', data.username || '');
       setMessage('Login successful. Redirecting...');
@@ -27,23 +28,26 @@ export default function Login() {
   };
 
   return (
-    <div className="page page-center">
-      <div>
-        <h1>Welcome back</h1>
-        <p>Sign in to access your personalized job alerts.</p>
+    <div className="page-center">
+      <div className="auth-card">
+        <div className="auth-card-header">
+          <h1>Welcome back</h1>
+          <p>Sign in to access your personalized job alerts.</p>
+        </div>
+
         <form onSubmit={handleSubmit} className="form-grid">
           <label>
-            <span>
-              <Mail size={18} />
-              Email
-            </span>
-            <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" required />
+            <span><Mail size={18} /> Email</span>
+            <input
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              type="email"
+              placeholder="you@example.com"
+              required
+            />
           </label>
           <label>
-            <span>
-              <Lock size={18} />
-              Password
-            </span>
+            <span><Lock size={18} /> Password</span>
             <div className="password-wrapper">
               <input
                 value={password}
@@ -66,13 +70,17 @@ export default function Login() {
             Login
           </button>
         </form>
+
         {message && <p className="alert">{message}</p>}
-        <p className="auth-footer">
-          <a href="/forgot-password">Forgot password?</a>
-        </p>
-        <p className="auth-footer">
-          Don&apos;t have an account? <a href="/signup">Sign up</a>
-        </p>
+
+        <div className="auth-footer-links">
+          <p className="auth-footer">
+            <a href="/forgot-password">Forgot password?</a>
+          </p>
+          <p className="auth-footer">
+            Don&apos;t have an account? <a href="/signup">Sign up</a>
+          </p>
+        </div>
       </div>
     </div>
   );

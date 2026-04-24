@@ -34,10 +34,12 @@ export default function Signup() {
   };
 
   return (
-    <div className="page page-center">
-      <div>
-        <h1>Create your account</h1>
-        <p>Sign up in seconds. Set up your job preferences after login.</p>
+    <div className="page-center">
+      <div className="auth-card">
+        <div className="auth-card-header">
+          <h1>Create your account</h1>
+          <p>Sign up in seconds. Set up your job preferences after login.</p>
+        </div>
         <form onSubmit={handleSubmit} className="form-grid">
 
           <label>
@@ -111,9 +113,11 @@ export default function Signup() {
         {error && <p className="alert alert-error">{error}</p>}
         {success && <p className="alert alert-success">{success}</p>}
 
-        <p className="auth-footer">
-          Already have an account? <a href="/login">Log in</a>
-        </p>
+        <div className="auth-footer-links">
+          <p className="auth-footer">
+            Already have an account? <a href="/login">Log in</a>
+          </p>
+        </div>
       </div>
     </div>
   );

@@ -1,6 +1,27 @@
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
-async function request(path, options = {}) {
+async function refreshAccessToken() {
+  const refreshToken = localStorage.getItem('refreshToken');
+  if (!refreshToken) throw new Error('No refresh token');
+
+  const response = await fetch(`${BASE_URL}/auth/refresh`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refresh_token: refreshToken }),
+  });
+
+  if (!response.ok) {
+    localStorage.clear();
+    window.location.href = '/login';
+    throw new Error('Session expired');
+  }
+
+  const data = await response.json();
+  localStorage.setItem('token', data.access_token);
+  return data.access_token;
+}
+
+async function request(path, options = {}, isRetry = false) {
   const token = localStorage.getItem('token');
   const headers = {
     'Content-Type': 'application/json',
@@ -8,10 +29,19 @@ async function request(path, options = {}) {
     ...(options.headers || {}),
   };
 
-  const response = await fetch(`${BASE_URL}${path}`, {
-    headers,
-    ...options,
-  });
+  const response = await fetch(`${BASE_URL}${path}`, { headers, ...options });
+
+  if (response.status === 401 && !isRetry) {
+    try {
+      const newToken = await refreshAccessToken();
+      return request(path, {
+        ...options,
+        headers: { ...options.headers, Authorization: `Bearer ${newToken}` },
+      }, true);
+    } catch {
+      throw new Error('Session expired. Please log in again.');
+    }
+  }
 
   const data = await response.json();
   if (!response.ok) {
