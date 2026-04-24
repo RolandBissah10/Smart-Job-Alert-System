@@ -7,13 +7,13 @@ from app.tasks.scheduler import scheduler, run_job_pipeline
 from app.services.notifier import send_email
 from app.services.matcher import _get_keywords_from_profile, match_score
 from app.db.database import users_collection, jobs_collection, alerts_collection
-from app.config import EMAIL_USER, EMAIL_PASS
+from app.config import EMAIL_USER, EMAIL_PASS, FRONTEND_URL
 
 app = FastAPI(title="Smart Job Alert System")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[FRONTEND_URL, "http://localhost:4173", "http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
