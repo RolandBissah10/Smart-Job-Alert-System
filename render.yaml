@@ -29,9 +29,8 @@ services:
         sync: false
 
   # ── Frontend (React/Vite) ──────────────────────────────────────────
-  - type: web
+  - type: static
     name: smart-job-alert-frontend
-    runtime: static
     rootDir: frontend
     buildCommand: npm install && npm run build
     staticPublishPath: dist
