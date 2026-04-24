@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getDashboard } from '../../services/api';
-import { Briefcase, Heart, Bell, TrendingUp, AlertCircle, CheckCircle } from 'lucide-react';
+import { Briefcase, Heart, Bell, TrendingUp, AlertCircle } from 'lucide-react';
 
 export default function Overview({ onNavigate }) {
   const [data, setData] = useState(null);
@@ -37,15 +37,6 @@ export default function Overview({ onNavigate }) {
         </div>
       )}
 
-      {data && data.profile_complete && (
-        <div className="profile-prompt profile-prompt-success">
-          <CheckCircle size={20} />
-          <div>
-            <strong>Profile complete!</strong>
-            <p>You are set up to receive personalized job matches.</p>
-          </div>
-        </div>
-      )}
 
       <div className="stats-grid">
         <div className="stat-card">

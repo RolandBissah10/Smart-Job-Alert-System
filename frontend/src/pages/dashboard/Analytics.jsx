@@ -46,17 +46,14 @@ export default function Analytics() {
           <h2>Analytics</h2>
           <p>Your activity and match insights</p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div className="section-header-actions">
           {updatedLabel && (
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-light)' }}>
-              Updated {updatedLabel}
-            </span>
+            <span className="section-header-updated">Updated {updatedLabel}</span>
           )}
           <button
-            className="button button-secondary"
+            className="button button-secondary refresh-btn"
             onClick={() => load(true)}
             disabled={refreshing}
-            style={{ padding: '8px 14px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}
           >
             <RefreshCw size={14} className={refreshing ? 'spin' : ''} />
             {refreshing ? 'Refreshing...' : 'Refresh'}

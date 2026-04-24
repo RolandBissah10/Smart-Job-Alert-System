@@ -1,26 +1,60 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { getDashboard } from '../../services/api';
-import { Bell } from 'lucide-react';
+import { Bell, RefreshCw } from 'lucide-react';
+
+const REFRESH_INTERVAL = 24 * 60 * 60 * 1000;
 
 export default function Alerts() {
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState(null);
 
-  useEffect(() => {
+  const load = useCallback((isManual = false) => {
+    if (isManual) setRefreshing(true);
     getDashboard()
-      .then((data) => setAlerts(data.recent_alerts || []))
+      .then((data) => {
+        setAlerts(data.recent_alerts || []);
+        setLastUpdated(new Date());
+      })
       .catch(console.error)
-      .finally(() => setLoading(false));
+      .finally(() => {
+        setLoading(false);
+        setRefreshing(false);
+      });
   }, []);
 
+  useEffect(() => {
+    load();
+    const interval = setInterval(() => load(), REFRESH_INTERVAL);
+    return () => clearInterval(interval);
+  }, [load]);
+
   if (loading) return <p className="loading-text">Loading alerts...</p>;
+
+  const updatedLabel = lastUpdated
+    ? lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    : '';
 
   return (
     <div>
       <div className="section-header">
         <div>
           <h2>Alert History</h2>
-          <p>Jobs delivered to your email</p>
+          <p>Last 10 jobs delivered to your email</p>
+        </div>
+        <div className="section-header-actions">
+          {updatedLabel && (
+            <span className="section-header-updated">Updated {updatedLabel}</span>
+          )}
+          <button
+            className="button button-secondary refresh-btn"
+            onClick={() => load(true)}
+            disabled={refreshing}
+          >
+            <RefreshCw size={14} className={refreshing ? 'spin' : ''} />
+            {refreshing ? 'Refreshing...' : 'Refresh'}
+          </button>
         </div>
       </div>
 

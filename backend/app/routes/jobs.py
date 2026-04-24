@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Header
+from fastapi import APIRouter, HTTPException, Header, Query
 from app.services.scraper import fetch_jobs, save_jobs
 from app.services.matcher import match_jobs_to_active_users, score_jobs_for_user
 from app.services.notifier import send_email
@@ -27,7 +27,11 @@ def scrape_jobs():
 
 
 @router.get("/feed")
-def get_job_feed(authorization: str = Header(None)):
+def get_job_feed(
+    authorization: str = Header(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(6, ge=1, le=50),
+):
     email = _require_auth(authorization)
     user = users_collection.find_one({"email": email})
     if not user:
@@ -35,11 +39,17 @@ def get_job_feed(authorization: str = Header(None)):
 
     profile = user.get("profile", {})
     if not profile.get("tech_stack") and not profile.get("roles"):
-        return {"jobs": [], "profile_required": True}
+        return {"jobs": [], "total": 0, "page": page, "page_size": page_size, "profile_required": True}
 
+    # Fetch recent jobs, score all, then paginate matched results
     jobs = list(jobs_collection.find({}).sort("created_at", -1).limit(50))
-    scored = score_jobs_for_user(jobs, profile)
-    return {"jobs": scored, "profile_required": False}
+    all_scored = score_jobs_for_user(jobs, profile)
+
+    total = len(all_scored)
+    skip = (page - 1) * page_size
+    paginated = all_scored[skip: skip + page_size]
+
+    return {"jobs": paginated, "total": total, "page": page, "page_size": page_size, "profile_required": False}
 
 
 @router.post("/run-pipeline")

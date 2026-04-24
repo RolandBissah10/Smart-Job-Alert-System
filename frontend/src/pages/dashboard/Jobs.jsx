@@ -1,19 +1,22 @@
 import { useState, useEffect } from 'react';
 import { getJobFeed, getSavedJobs } from '../../services/api';
 import JobCard from '../../components/JobCard';
-import { Zap } from 'lucide-react';
+import { Zap, ChevronLeft, ChevronRight } from 'lucide-react';
+
+const PAGE_SIZE = 6;
 
 export default function Jobs({ onNavigate }) {
   const [feed, setFeed] = useState(null);
   const [savedJobs, setSavedJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [page, setPage] = useState(1);
 
-  const load = () => {
+  const load = (targetPage = page) => {
     setLoading(true);
     setError('');
     Promise.all([
-      getJobFeed().catch((err) => ({ error: err.message })),
+      getJobFeed(targetPage, PAGE_SIZE).catch((err) => ({ error: err.message })),
       getSavedJobs().catch(() => []),
     ])
       .then(([feedData, saved]) => {
@@ -23,7 +26,7 @@ export default function Jobs({ onNavigate }) {
       .finally(() => setLoading(false));
   };
 
-  useEffect(load, []);
+  useEffect(() => { load(page); }, [page]);
 
   const isJobSaved = (job) =>
     savedJobs.some((s) => s.job_id === (job._id || job.url));
@@ -46,15 +49,26 @@ export default function Jobs({ onNavigate }) {
   }
 
   const jobs = feed?.jobs || [];
+  const total = feed?.total ?? 0;
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+
+  const goTo = (p) => {
+    setPage(p);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   return (
     <div>
       <div className="section-header">
         <div>
           <h2>Your Job Feed</h2>
-          <p>{jobs.length} personalized match{jobs.length !== 1 ? 'es' : ''}</p>
+          <p>
+            {total > 0
+              ? `${total} job${total !== 1 ? 's' : ''} — page ${page} of ${totalPages}`
+              : 'No jobs found yet'}
+          </p>
         </div>
-        <button className="button button-secondary" onClick={load}>Refresh</button>
+        <button className="button button-secondary" onClick={() => load(page)}>Refresh</button>
       </div>
 
       {error && <p className="alert alert-error">{error}</p>}
@@ -64,25 +78,72 @@ export default function Jobs({ onNavigate }) {
           <p>No jobs found yet. Run the pipeline to scrape fresh listings.</p>
         </div>
       ) : (
-        <div className="jobs-grid">
-          {jobs.map(({ job, score, reasons }, i) => (
-            <div key={job._id || i} className="job-card-wrapper">
-              {score > 0 && (
-                <div className="match-info">
-                  <span className="match-score">Score: {score}</span>
-                  {reasons?.length > 0 && (
-                    <span className="match-reasons">Matches: {reasons.join(', ')}</span>
+        <>
+          <div className="jobs-grid">
+            {jobs.map(({ job, score, reasons }, i) => (
+              <div key={job._id || i} className="job-card-wrapper">
+                {score > 0 && (
+                  <div className="match-info">
+                    <span className="match-score">Score: {score}</span>
+                    {reasons?.length > 0 && (
+                      <span className="match-reasons">Matches: {reasons.join(', ')}</span>
+                    )}
+                  </div>
+                )}
+                <JobCard
+                  job={job}
+                  isSaved={isJobSaved(job)}
+                  onSaveToggle={refreshSaved}
+                />
+              </div>
+            ))}
+          </div>
+
+          {totalPages > 1 && (
+            <div className="pagination">
+              <button
+                className="pagination-btn"
+                onClick={() => goTo(page - 1)}
+                disabled={page === 1}
+              >
+                <ChevronLeft size={16} />
+                Prev
+              </button>
+
+              <div className="pagination-pages">
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 2)
+                  .reduce((acc, p, idx, arr) => {
+                    if (idx > 0 && p - arr[idx - 1] > 1) acc.push('...');
+                    acc.push(p);
+                    return acc;
+                  }, [])
+                  .map((p, i) =>
+                    p === '...' ? (
+                      <span key={`ellipsis-${i}`} className="pagination-ellipsis">…</span>
+                    ) : (
+                      <button
+                        key={p}
+                        className={`pagination-btn ${p === page ? 'active' : ''}`}
+                        onClick={() => goTo(p)}
+                      >
+                        {p}
+                      </button>
+                    )
                   )}
-                </div>
-              )}
-              <JobCard
-                job={job}
-                isSaved={isJobSaved(job)}
-                onSaveToggle={refreshSaved}
-              />
+              </div>
+
+              <button
+                className="pagination-btn"
+                onClick={() => goTo(page + 1)}
+                disabled={page === totalPages}
+              >
+                Next
+                <ChevronRight size={16} />
+              </button>
             </div>
-          ))}
-        </div>
+          )}
+        </>
       )}
     </div>
   );

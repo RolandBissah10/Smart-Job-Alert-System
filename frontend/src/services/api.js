@@ -84,8 +84,8 @@ export function fetchJobs() {
   return request('/jobs/scrape');
 }
 
-export function getJobFeed() {
-  return request('/jobs/feed');
+export function getJobFeed(page = 1, pageSize = 6) {
+  return request(`/jobs/feed?page=${page}&page_size=${pageSize}`);
 }
 
 export function runPipeline() {
