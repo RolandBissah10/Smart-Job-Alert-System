@@ -1,7 +1,7 @@
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from app.config import EMAIL_USER, EMAIL_PASS, EMAIL_FROM
+from app.config import EMAIL_USER, EMAIL_PASS, EMAIL_FROM, FRONTEND_URL
 
 
 def _build_html(jobs):
@@ -110,7 +110,7 @@ def _build_html(jobs):
               <table width="100%" cellpadding="0" cellspacing="0">
                 <tr>
                   <td align="center">
-                    <a href="http://localhost:5173/dashboard"
+                    <a href="{FRONTEND_URL}/dashboard"
                        style="display:inline-block;padding:12px 28px;
                               background-color:#f1f5f9;color:#1e40af;
                               text-decoration:none;border-radius:8px;
@@ -132,7 +132,7 @@ def _build_html(jobs):
               <p style="margin:0;font-size:12px;color:#94a3b8;line-height:1.6;">
                 You&#39;re receiving this because you signed up for Smart Job Alert.<br/>
                 To stop alerts, disable notifications in your
-                <a href="http://localhost:5173/dashboard"
+                <a href="{FRONTEND_URL}/dashboard"
                    style="color:#1e40af;text-decoration:none;font-weight:600;">
                   dashboard settings
                 </a>.
@@ -156,7 +156,7 @@ def _build_plain(jobs):
         lines.append(f"Location : {job.get('location', 'Remote')}")
         lines.append(f"Apply at : {job.get('url')}")
     lines.append("\n" + "=" * 40)
-    lines.append("Open your dashboard: http://localhost:5173/dashboard")
+    lines.append("Open your dashboard: {FRONTEND_URL}/dashboard")
     return "\n".join(lines)
 
 

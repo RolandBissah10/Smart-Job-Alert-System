@@ -532,6 +532,22 @@ input:focus, textarea:focus {
   font-weight: 500;
 }
 
+.job-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.job-freshness {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
 .job-meta,
 .job-description {
   margin: 16px 0 0;
@@ -1074,7 +1090,21 @@ main.dashboard-main-wrapper {
 /* ==================== OVERVIEW GREETING ==================== */
 
 .overview-greeting {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
   margin-bottom: 28px;
+  flex-wrap: wrap;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.spin {
+  animation: spin 0.8s linear infinite;
 }
 
 .overview-greeting h2 {
@@ -1238,6 +1268,44 @@ main.dashboard-main-wrapper {
   margin-bottom: 24px;
 }
 
+.wizard-header-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+.wizard-header-top > div p {
+  color: var(--text-light);
+  margin-top: 4px;
+}
+
+.reset-confirm {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.reset-confirm span {
+  font-size: 0.9rem;
+  color: var(--text-light);
+}
+
+.button-danger {
+  background: #dc2626;
+  border-color: #dc2626;
+  color: white;
+}
+
+.button-danger:hover {
+  background: #b91c1c;
+  border-color: #b91c1c;
+}
+
 .wizard-steps {
   display: flex;
   align-items: center;
@@ -1253,7 +1321,7 @@ main.dashboard-main-wrapper {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 160px;
+  width: 240px;
   height: 2px;
   background: var(--border);
   z-index: 0;
@@ -1322,6 +1390,39 @@ main.dashboard-main-wrapper {
   display: flex;
   justify-content: space-between;
   gap: 16px;
+}
+
+/* ==================== INDUSTRY GRID ==================== */
+
+.industry-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.industry-card {
+  padding: 16px 20px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--background);
+  color: var(--text);
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.industry-card:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.industry-card.selected {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
 }
 
 /* ==================== CHIPS ==================== */
@@ -1738,11 +1839,11 @@ select {
   }
 
   .wizard-step {
-    margin: 0 24px;
+    margin: 0 18px;
   }
 
   .wizard-steps::before {
-    width: 100px;
+    width: 160px;
   }
 
   .profile-prompt {
@@ -1822,15 +1923,19 @@ select {
   }
 
   .wizard-step {
-    margin: 0 16px;
+    margin: 0 10px;
   }
 
   .wizard-steps::before {
-    width: 60px;
+    width: 100px;
   }
 
   .pagination-pages {
     gap: 2px;
+  }
+
+  .industry-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 

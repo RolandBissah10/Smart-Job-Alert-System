@@ -7,8 +7,12 @@ def normalize(text: str) -> str:
 
 def _get_keywords_from_profile(profile: dict) -> list:
     keywords = []
-    keywords.extend(profile.get("tech_stack", []))
+    # Support both new "skills" field and legacy "tech_stack" field
+    keywords.extend(profile.get("skills", []) or profile.get("tech_stack", []))
     keywords.extend(profile.get("roles", []))
+    industry = profile.get("industry", "")
+    if industry:
+        keywords.append(industry.replace("_", " "))
     return keywords
 
 
@@ -58,7 +62,7 @@ def match_jobs_to_active_users(jobs):
     users = list(users_collection.find({"is_active": True}))
     for user in users:
         profile = user.get("profile", {})
-        if not profile.get("tech_stack") and not profile.get("roles"):
+        if not profile.get("skills") and not profile.get("tech_stack") and not profile.get("roles"):
             continue
         keywords = _get_keywords_from_profile(profile)
         for job in jobs:

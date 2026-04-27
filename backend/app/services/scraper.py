@@ -161,12 +161,29 @@ def _fetch_jobicy():
 
 
 
+def _build_adzuna_queries() -> list:
+    fallback = ["software developer", "data analyst", "marketing manager", "financial analyst", "registered nurse"]
+    try:
+        from app.db.database import users_collection
+        queries = set()
+        for user in users_collection.find({"is_active": True}, {"profile.roles": 1, "profile.industry": 1}):
+            profile = user.get("profile", {})
+            for role in (profile.get("roles") or [])[:3]:
+                queries.add(role)
+            industry = (profile.get("industry") or "").strip()
+            if industry:
+                queries.add(industry.replace("_", " "))
+        return list(queries)[:10] if queries else fallback
+    except Exception:
+        return fallback
+
+
 def _fetch_adzuna():
     if not ADZUNA_APP_ID or not ADZUNA_APP_KEY:
         return []
 
     import time
-    queries = ["software developer", "data scientist", "frontend", "backend", "devops"]
+    queries = _build_adzuna_queries()
     jobs = []
 
     for query in queries:
@@ -231,21 +248,31 @@ def save_jobs(jobs):
     if not valid:
         return []
 
-    # One query to find all URLs already in the DB
     urls = [j["url"] for j in valid]
     existing_urls = {
         doc["url"]
         for doc in jobs_collection.find({"url": {"$in": urls}}, {"url": 1})
     }
 
+    now = datetime.utcnow()
+
+    # Refresh last_seen_at for jobs still active on job boards
+    active_urls = [j["url"] for j in valid if j["url"] in existing_urls]
+    if active_urls:
+        jobs_collection.update_many(
+            {"url": {"$in": active_urls}},
+            {"$set": {"last_seen_at": now}},
+        )
+
     new_jobs = [j for j in valid if j["url"] not in existing_urls]
     if new_jobs:
         for job in new_jobs:
-            job["created_at"] = datetime.utcnow()
+            job["created_at"] = now
+            job["last_seen_at"] = now
         try:
             jobs_collection.insert_many(new_jobs, ordered=False)
         except Exception as e:
             logger.error(f"Bulk insert error: {e}")
 
-    logger.info(f"save_jobs: {len(new_jobs)} new out of {len(valid)} fetched")
+    logger.info(f"save_jobs: {len(new_jobs)} new, {len(active_urls)} refreshed out of {len(valid)} fetched")
     return new_jobs

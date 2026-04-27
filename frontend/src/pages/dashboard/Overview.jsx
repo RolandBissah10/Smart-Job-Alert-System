@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
-import { getDashboard } from '../../services/api';
-import { Briefcase, Heart, Bell, TrendingUp, AlertCircle } from 'lucide-react';
+import { getDashboard, runPipeline } from '../../services/api';
+import { Briefcase, Heart, Bell, TrendingUp, AlertCircle, RefreshCw } from 'lucide-react';
 
 export default function Overview({ onNavigate }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshMsg, setRefreshMsg] = useState('');
   const username = localStorage.getItem('username') || '';
 
   useEffect(() => {
@@ -14,16 +16,46 @@ export default function Overview({ onNavigate }) {
       .finally(() => setLoading(false));
   }, []);
 
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    setRefreshMsg('');
+    try {
+      await runPipeline();
+      const updated = await getDashboard();
+      setData(updated);
+      setRefreshMsg('Jobs refreshed successfully.');
+    } catch (err) {
+      setRefreshMsg(`Refresh failed: ${err.message}`);
+    } finally {
+      setRefreshing(false);
+      setTimeout(() => setRefreshMsg(''), 5000);
+    }
+  };
+
   if (loading) return <p className="loading-text">Loading dashboard...</p>;
 
   return (
     <div>
       <div className="overview-greeting">
-        <h2>
-          {username ? `Welcome back, ${username}!` : 'Welcome back!'}
-        </h2>
-        <p>Here is a summary of your job alert activity.</p>
+        <div>
+          <h2>{username ? `Welcome back, ${username}!` : 'Welcome back!'}</h2>
+          <p>Here is a summary of your job alert activity.</p>
+        </div>
+        <button
+          className="button button-secondary"
+          onClick={handleRefresh}
+          disabled={refreshing}
+          title="Scrape fresh jobs now and remove stale listings"
+        >
+          <RefreshCw size={16} className={refreshing ? 'spin' : ''} />
+          {refreshing ? 'Refreshing...' : 'Refresh Jobs'}
+        </button>
       </div>
+      {refreshMsg && (
+        <p className={`alert ${refreshMsg.startsWith('Refresh failed') ? 'alert-error' : 'alert-success'}`}>
+          {refreshMsg}
+        </p>
+      )}
       {data && !data.profile_complete && (
         <div className="profile-prompt">
           <AlertCircle size={20} />

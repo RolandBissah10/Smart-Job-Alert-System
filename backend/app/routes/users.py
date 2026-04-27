@@ -68,6 +68,16 @@ def update_profile(profile: UserProfile, authorization: str = Header(None)):
     return {"message": "Profile updated successfully"}
 
 
+@router.delete("/profile")
+def reset_profile(authorization: str = Header(None)):
+    email = _require_auth(authorization)
+    user = users_collection.find_one({"email": email})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    users_collection.update_one({"email": email}, {"$set": {"profile": {}}})
+    return {"message": "Profile reset successfully"}
+
+
 @router.get("/")
 def list_users():
     users = [serialize_user(u) for u in users_collection.find({}, {"password": 0})]

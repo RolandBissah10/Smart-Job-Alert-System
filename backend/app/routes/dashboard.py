@@ -24,7 +24,7 @@ def get_dashboard(authorization: str = Header(None)):
 
     user_id = user["_id"]
     profile = user.get("profile", {})
-    profile_complete = bool(profile.get("tech_stack") or profile.get("roles"))
+    profile_complete = bool(profile.get("skills") or profile.get("tech_stack") or profile.get("roles"))
 
     saved_count = saved_jobs_collection.count_documents({"user_email": email})
     alerts_count = alerts_collection.count_documents({"user_id": user_id})

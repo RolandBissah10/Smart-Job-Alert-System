@@ -28,6 +28,13 @@ export default function Jobs({ onNavigate }) {
 
   useEffect(() => { load(page); }, [page]);
 
+  // Refresh the feed when the user returns to the tab so they see newly scraped jobs
+  useEffect(() => {
+    const onFocus = () => load(page);
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [page]);
+
   const isJobSaved = (job) =>
     savedJobs.some((s) => s.job_id === (job._id || job.url));
 

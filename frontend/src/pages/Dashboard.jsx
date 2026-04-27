@@ -49,20 +49,25 @@ export default function Dashboard() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('userEmail');
-    localStorage.removeItem('username');
-    localStorage.removeItem('dashboardSection');
-    localStorage.removeItem('customTechs');
-    localStorage.removeItem('customRoles');
+    const keysToRemove = ['token', 'refreshToken', 'userEmail', 'username', 'dashboardSection', 'customSkills', 'customRoles'];
+    keysToRemove.forEach((k) => localStorage.removeItem(k));
+    // Remove per-industry custom skill keys
+    Object.keys(localStorage)
+      .filter((k) => k.startsWith('customSkills_'))
+      .forEach((k) => localStorage.removeItem(k));
     navigate('/login');
   };
 
   const toggleDark = () => {
     const next = !darkMode;
     setDarkMode(next);
-    document.documentElement.setAttribute('data-theme', next ? 'dark' : 'light');
+    if (next) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.setAttribute('data-theme', 'light');
+      localStorage.setItem('theme', 'light');
+    }
   };
 
   const SectionComponent = {

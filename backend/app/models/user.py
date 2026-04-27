@@ -3,7 +3,8 @@ from typing import List, Optional
 
 
 class UserProfile(BaseModel):
-    tech_stack: Optional[List[str]] = []
+    industry: Optional[str] = None
+    skills: Optional[List[str]] = []
     roles: Optional[List[str]] = []
     experience_level: Optional[str] = None
     location: Optional[str] = "Remote"

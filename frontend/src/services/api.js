@@ -76,6 +76,10 @@ export function updateProfile(profile) {
   });
 }
 
+export function resetProfile() {
+  return request('/users/profile', { method: 'DELETE' });
+}
+
 export function getDashboard() {
   return request('/dashboard/');
 }

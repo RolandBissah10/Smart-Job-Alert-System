@@ -1,6 +1,19 @@
 import { useState } from 'react';
 import { saveJob, unsaveJob } from '../services/api';
-import { ExternalLink, Heart, HeartOff } from 'lucide-react';
+import { ExternalLink, Heart, HeartOff, Clock } from 'lucide-react';
+
+function timeAgo(dateStr) {
+  if (!dateStr) return null;
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(diff / 3600000);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(diff / 86400000);
+  if (days === 1) return 'Yesterday';
+  if (days < 7) return `${days}d ago`;
+  return new Date(dateStr).toLocaleDateString();
+}
 
 export default function JobCard({ job, isSaved = false, onSaveToggle }) {
   const [saving, setSaving] = useState(false);
@@ -31,7 +44,15 @@ export default function JobCard({ job, isSaved = false, onSaveToggle }) {
         </div>
         {job.source && <span className="tag">{job.source}</span>}
       </div>
-      {job.location && <p className="job-meta">Location: {job.location}</p>}
+      <div className="job-meta-row">
+        {job.location && <p className="job-meta">Location: {job.location}</p>}
+        {job.created_at && (
+          <p className="job-meta job-freshness">
+            <Clock size={12} />
+            {timeAgo(job.created_at)}
+          </p>
+        )}
+      </div>
       {job.description && <p className="job-description">{job.description}</p>}
       <div className="job-actions">
         {job.url && (
