@@ -5,7 +5,7 @@ import { Zap, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const PAGE_SIZE = 6;
 
-export default function Jobs({ onNavigate }) {
+export default function Jobs({ onNavigate, refreshKey }) {
   const [feed, setFeed] = useState(null);
   const [savedJobs, setSavedJobs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -26,7 +26,7 @@ export default function Jobs({ onNavigate }) {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(page); }, [page]);
+  useEffect(() => { load(page); }, [page, refreshKey]);
 
   // Refresh the feed when the user returns to the tab so they see newly scraped jobs
   useEffect(() => {

@@ -1,6 +1,8 @@
 from fastapi import APIRouter, HTTPException, Header
 from app.db.database import users_collection, jobs_collection, alerts_collection, saved_jobs_collection
 from app.auth import verify_access_token
+from app.services.job_filters import build_fresh_jobs_filter
+from app.services.matcher import score_jobs_for_user, profile_has_match_criteria
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
@@ -24,15 +26,30 @@ def get_dashboard(authorization: str = Header(None)):
 
     user_id = user["_id"]
     profile = user.get("profile", {})
-    profile_complete = bool(profile.get("skills") or profile.get("tech_stack") or profile.get("roles"))
+    profile_version = user.get("profile_version", 1)
+    profile_complete = profile_has_match_criteria(profile)
 
     saved_count = saved_jobs_collection.count_documents({"user_email": email})
-    alerts_count = alerts_collection.count_documents({"user_id": user_id})
-    total_jobs = jobs_collection.count_documents({})
+    alerts_count = 0
+    total_jobs = 0
+    if profile_complete:
+        alerts_count = alerts_collection.count_documents({
+            "user_id": user_id,
+            "profile_version": profile_version,
+        })
+        fresh_jobs = list(jobs_collection.find(build_fresh_jobs_filter(7)).sort("created_at", -1).limit(500))
+        if len(fresh_jobs) < 10:
+            fresh_jobs = list(jobs_collection.find(build_fresh_jobs_filter(30)).sort("created_at", -1).limit(500))
+        total_jobs = len(score_jobs_for_user(fresh_jobs, profile))
 
-    recent_alerts_raw = list(
-        alerts_collection.find({"user_id": user_id}).sort("sent_at", -1).limit(10)
-    )
+    recent_alerts_raw = []
+    if profile_complete:
+        recent_alerts_raw = list(
+            alerts_collection.find({
+                "user_id": user_id,
+                "profile_version": profile_version,
+            }).sort("sent_at", -1).limit(10)
+        )
     recent_alerts = []
     for a in recent_alerts_raw:
         recent_alerts.append({
@@ -52,5 +69,6 @@ def get_dashboard(authorization: str = Header(None)):
             "alerts_sent": alerts_count,
             "total_jobs": total_jobs,
         },
+        "profile_required": not profile_complete,
         "recent_alerts": recent_alerts,
     }

@@ -24,6 +24,7 @@ export default function Dashboard() {
   const [section, setSection] = useState(
     () => localStorage.getItem('dashboardSection') || 'overview'
   );
+  const [dashboardRefreshKey, setDashboardRefreshKey] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
@@ -46,6 +47,10 @@ export default function Dashboard() {
     setSection(id);
     localStorage.setItem('dashboardSection', id);
     setSidebarOpen(false);
+  };
+
+  const handleProfileChange = () => {
+    setDashboardRefreshKey((prev) => prev + 1);
   };
 
   const handleLogout = () => {
@@ -136,7 +141,11 @@ export default function Dashboard() {
           </h2>
         </div>
         <div className="dashboard-section">
-          <SectionComponent onNavigate={handleSectionChange} />
+          <SectionComponent
+            onNavigate={handleSectionChange}
+            refreshKey={dashboardRefreshKey}
+            onProfileChange={handleProfileChange}
+          />
         </div>
       </div>
     </div>

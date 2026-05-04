@@ -1,33 +1,55 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { getDashboard, runPipeline } from '../../services/api';
 import { Briefcase, Heart, Bell, TrendingUp, AlertCircle, RefreshCw } from 'lucide-react';
 
-export default function Overview({ onNavigate }) {
+const REFRESH_INTERVAL = 24 * 60 * 60 * 1000;
+
+export default function Overview({ onNavigate, refreshKey }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [runningPipeline, setRunningPipeline] = useState(false);
   const [refreshMsg, setRefreshMsg] = useState('');
   const username = localStorage.getItem('username') || '';
 
-  useEffect(() => {
-    getDashboard()
+  const loadDashboard = useCallback(() => {
+    return getDashboard()
       .then(setData)
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    loadDashboard();
+    const interval = setInterval(() => loadDashboard(), REFRESH_INTERVAL);
+    return () => clearInterval(interval);
+  }, [loadDashboard, refreshKey]);
+
   const handleRefresh = async () => {
     setRefreshing(true);
     setRefreshMsg('');
     try {
-      await runPipeline();
-      const updated = await getDashboard();
-      setData(updated);
-      setRefreshMsg('Jobs refreshed successfully.');
+      await loadDashboard();
+      setRefreshMsg('Dashboard refreshed successfully.');
     } catch (err) {
       setRefreshMsg(`Refresh failed: ${err.message}`);
     } finally {
       setRefreshing(false);
+      setTimeout(() => setRefreshMsg(''), 5000);
+    }
+  };
+
+  const handleRunPipeline = async () => {
+    setRunningPipeline(true);
+    setRefreshMsg('');
+    try {
+      await runPipeline();
+      await loadDashboard();
+      setRefreshMsg('Pipeline completed and dashboard updated.');
+    } catch (err) {
+      setRefreshMsg(`Pipeline failed: ${err.message}`);
+    } finally {
+      setRunningPipeline(false);
       setTimeout(() => setRefreshMsg(''), 5000);
     }
   };
@@ -41,15 +63,26 @@ export default function Overview({ onNavigate }) {
           <h2>{username ? `Welcome back, ${username}!` : 'Welcome back!'}</h2>
           <p>Here is a summary of your job alert activity.</p>
         </div>
-        <button
-          className="button button-secondary"
-          onClick={handleRefresh}
-          disabled={refreshing}
-          title="Scrape fresh jobs now and remove stale listings"
-        >
-          <RefreshCw size={16} className={refreshing ? 'spin' : ''} />
-          {refreshing ? 'Refreshing...' : 'Refresh Jobs'}
-        </button>
+        <div className="section-header-actions">
+          <button
+            className="button button-secondary"
+            onClick={handleRefresh}
+            disabled={refreshing || runningPipeline}
+            title="Reload dashboard stats and alerts"
+          >
+            <RefreshCw size={16} className={refreshing ? 'spin' : ''} />
+            {refreshing ? 'Refreshing...' : 'Refresh Dashboard'}
+          </button>
+          <button
+            className="button"
+            onClick={handleRunPipeline}
+            disabled={runningPipeline || refreshing}
+            title="Scrape fresh jobs and run the matching pipeline"
+          >
+            <RefreshCw size={16} className={runningPipeline ? 'spin' : ''} />
+            {runningPipeline ? 'Running Pipeline...' : 'Run Pipeline'}
+          </button>
+        </div>
       </div>
       {refreshMsg && (
         <p className={`alert ${refreshMsg.startsWith('Refresh failed') ? 'alert-error' : 'alert-success'}`}>

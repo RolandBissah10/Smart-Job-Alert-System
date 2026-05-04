@@ -4,7 +4,7 @@ import { Bell, RefreshCw } from 'lucide-react';
 
 const REFRESH_INTERVAL = 24 * 60 * 60 * 1000;
 
-export default function Alerts() {
+export default function Alerts({ refreshKey }) {
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -28,7 +28,7 @@ export default function Alerts() {
     load();
     const interval = setInterval(() => load(), REFRESH_INTERVAL);
     return () => clearInterval(interval);
-  }, [load]);
+  }, [load, refreshKey]);
 
   if (loading) return <p className="loading-text">Loading alerts...</p>;
 

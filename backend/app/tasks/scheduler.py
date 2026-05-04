@@ -1,12 +1,13 @@
 from apscheduler.schedulers.background import BackgroundScheduler
-from app.services.scraper import fetch_jobs, save_jobs
-from app.services.matcher import match_score, _get_keywords_from_profile
-from app.services.notifier import send_email
-from app.db.database import alerts_collection, jobs_collection, users_collection, saved_jobs_collection
-from app.config import SCHEDULER_INTERVAL_MINUTES
 from datetime import datetime, timedelta
-from bson import ObjectId
 import logging
+
+from app.config import SCHEDULER_INTERVAL_MINUTES
+from app.db.database import alerts_collection, jobs_collection, saved_jobs_collection, users_collection
+from app.services.job_filters import build_fresh_jobs_filter
+from app.services.matcher import get_matching_jobs_for_profile, profile_has_match_criteria
+from app.services.notifier import send_email
+from app.services.scraper import fetch_jobs, save_jobs
 
 logger = logging.getLogger(__name__)
 
@@ -36,13 +37,11 @@ def _cleanup_stale_jobs():
 def run_job_pipeline():
     logger.info("Pipeline started")
 
-    # Step 1: remove listings no longer active on job boards
     try:
         _cleanup_stale_jobs()
     except Exception as e:
         logger.error(f"Cleanup error: {e}")
 
-    # Step 2: fetch and save new jobs from all sources
     try:
         fetched = fetch_jobs()
         save_jobs(fetched)
@@ -50,50 +49,53 @@ def run_job_pipeline():
     except Exception as e:
         logger.error(f"Fetch/save error: {e}")
 
-    # Step 2: for every active user, find unalerted matching jobs and send one digest
     users = list(users_collection.find({"is_active": True}))
     logger.info(f"Checking {len(users)} active users")
 
     total_sent = 0
     for user in users:
         profile = user.get("profile", {})
-        if not profile.get("skills") and not profile.get("tech_stack") and not profile.get("roles"):
-            logger.info(f"Skipping {user['email']} — no profile preferences set")
+        profile_version = user.get("profile_version", 1)
+        if not profile_has_match_criteria(profile):
+            logger.info(f"Skipping {user['email']} - no profile preferences set")
             continue
 
-        keywords = _get_keywords_from_profile(profile)
-
-        # Find job IDs already sent to this user
         sent_ids = [
             a["job_id"]
-            for a in alerts_collection.find({"user_id": user["_id"]}, {"job_id": 1})
+            for a in alerts_collection.find({
+                "user_id": user["_id"],
+                "profile_version": profile_version,
+            }, {"job_id": 1})
         ]
 
-        # Only consider jobs scraped in the last 7 days to keep alerts fresh
-        recent_cutoff = datetime.utcnow() - timedelta(days=7)
+        fresh_filter = build_fresh_jobs_filter(7)
         unalerted = list(
             jobs_collection.find({
+                **fresh_filter,
                 "_id": {"$nin": sent_ids},
-                "created_at": {"$gte": recent_cutoff},
             }).limit(500)
         )
+        if len(unalerted) < 10:
+            fallback_filter = build_fresh_jobs_filter(30)
+            unalerted = list(
+                jobs_collection.find({
+                    **fallback_filter,
+                    "_id": {"$nin": sent_ids},
+                }).limit(500)
+            )
 
-        # Score and filter
-        matched = [j for j in unalerted if match_score(j, keywords) > 0]
-        matched.sort(key=lambda j: match_score(j, keywords), reverse=True)
-        matched = matched[:20]  # cap at 20 jobs per email
-
+        matched = [item["job"] for item in get_matching_jobs_for_profile(unalerted, profile)[:20]]
         if not matched:
             logger.info(f"No new matches for {user['email']}")
             continue
 
-        # Insert alert records so we don't double-send on retry
         inserted_ids = []
         for job in matched:
             try:
                 result = alerts_collection.insert_one({
                     "user_id": user["_id"],
                     "user_email": user["email"],
+                    "profile_version": profile_version,
                     "job_id": job["_id"],
                     "job_title": job.get("title", ""),
                     "job_company": job.get("company", ""),
@@ -102,15 +104,14 @@ def run_job_pipeline():
                 })
                 inserted_ids.append(result.inserted_id)
             except Exception:
-                pass  # already exists from a previous run
+                pass
 
-        # Send the digest email; roll back alert records if it fails so we retry next run
         try:
             send_email(user["email"], matched)
             total_sent += 1
             logger.info(f"Digest sent to {user['email']} with {len(matched)} jobs")
         except Exception as e:
-            logger.error(f"Email failed for {user['email']}: {e} — rolling back alerts so they retry")
+            logger.error(f"Email failed for {user['email']}: {e} - rolling back alerts so they retry")
             if inserted_ids:
                 alerts_collection.delete_many({"_id": {"$in": inserted_ids}})
 

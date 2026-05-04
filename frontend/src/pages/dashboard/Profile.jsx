@@ -171,7 +171,33 @@ const INDUSTRY_ROLES = {
 const EXPERIENCE_OPTIONS = ['Junior', 'Mid', 'Senior'];
 const JOB_TYPE_OPTIONS = ['Full-time', 'Part-time', 'Contract', 'Internship', 'Freelance'];
 
-export default function Profile() {
+function persistCustomProfileFields(selectedIndustry, selectedSkills, selectedRoles) {
+  Object.keys(localStorage)
+    .filter((k) => k.startsWith('customSkills_'))
+    .forEach((k) => localStorage.removeItem(k));
+
+  const industryPresetSkills = selectedIndustry
+    ? (INDUSTRY_SKILLS[selectedIndustry] || []).flatMap((c) => c.items)
+    : [];
+  const industryPresetRoles = selectedIndustry
+    ? (INDUSTRY_ROLES[selectedIndustry] || [])
+    : [];
+
+  const customSkills = selectedSkills.filter((skill) => !industryPresetSkills.includes(skill));
+  const customRoles = selectedRoles.filter((role) => !industryPresetRoles.includes(role));
+
+  if (selectedIndustry && customSkills.length > 0) {
+    localStorage.setItem(`customSkills_${selectedIndustry}`, JSON.stringify(customSkills));
+  }
+
+  if (customRoles.length > 0) {
+    localStorage.setItem('customRoles', JSON.stringify(customRoles));
+  } else {
+    localStorage.removeItem('customRoles');
+  }
+}
+
+export default function Profile({ onProfileChange }) {
   const [step, setStep] = useState(1);
   const [industry, setIndustry] = useState('');
   const [skills, setSkills] = useState([]);
@@ -194,8 +220,6 @@ export default function Profile() {
   const roleOptions = industry ? (INDUSTRY_ROLES[industry] || []) : [];
 
   useEffect(() => {
-    const savedCustomRoles = JSON.parse(localStorage.getItem('customRoles') || '[]');
-
     getMe()
       .then((data) => {
         const p = data.profile || {};
@@ -203,15 +227,7 @@ export default function Profile() {
         const backendSkills = p.skills || p.tech_stack || [];
         const backendRoles = p.roles || [];
 
-        // Load custom skills scoped to this industry
-        const savedCustomSkills = JSON.parse(
-          localStorage.getItem(`customSkills_${savedIndustry}`) || '[]'
-        );
-
-        const mergedSkills = [...new Set([...backendSkills, ...savedCustomSkills])];
-        const mergedRoles = [...new Set([...backendRoles, ...savedCustomRoles])];
-
-        if (savedIndustry || mergedSkills.length || mergedRoles.length || p.experience_level) {
+        if (savedIndustry || backendSkills.length || backendRoles.length || p.experience_level) {
           setProfileExists(true);
         }
         setIndustry(savedIndustry);
@@ -219,11 +235,12 @@ export default function Profile() {
           const cats = INDUSTRY_SKILLS[savedIndustry] || [];
           setExpandedCategories(new Set(cats.length ? [cats[0].label] : []));
         }
-        setSkills(mergedSkills);
-        setRoles(mergedRoles);
+        setSkills(backendSkills);
+        setRoles(backendRoles);
         setExperienceLevel(p.experience_level || '');
         setLocation(p.location || 'Remote');
         setJobType(p.job_type || 'Full-time');
+        persistCustomProfileFields(savedIndustry, backendSkills, backendRoles);
       })
       .catch(console.error);
   }, []);
@@ -306,8 +323,10 @@ export default function Profile() {
         location,
         job_type: jobType,
       });
+      persistCustomProfileFields(industry, skills, roles);
       setSaved(true);
       setProfileExists(true);
+      onProfileChange?.();
       setTimeout(() => setSaved(false), 3000);
     } catch (err) {
       setError(err.message);
@@ -337,6 +356,7 @@ export default function Profile() {
       setStep(1);
       setProfileExists(false);
       setConfirmReset(false);
+      onProfileChange?.();
     } catch (err) {
       setError(err.message);
     } finally {

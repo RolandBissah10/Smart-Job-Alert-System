@@ -24,6 +24,7 @@ def serialize_user(user):
         "username": user.get("username", ""),
         "email": user["email"],
         "profile": user.get("profile", {}),
+        "profile_version": user.get("profile_version", 1),
         "is_active": user.get("is_active", True),
         "plan": user.get("plan", "free"),
         "created_at": user.get("created_at"),
@@ -41,6 +42,7 @@ def signup(user: UserSignup):
         "email": user.email,
         "password": hash_password(user.password),
         "profile": {},
+        "profile_version": 1,
         "is_active": True,
         "plan": "free",
         "created_at": datetime.utcnow(),
@@ -64,7 +66,16 @@ def update_profile(profile: UserProfile, authorization: str = Header(None)):
     user = users_collection.find_one({"email": email})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    users_collection.update_one({"email": email}, {"$set": {"profile": profile.dict()}})
+    users_collection.update_one(
+        {"email": email},
+        {
+            "$set": {
+                "profile": profile.dict(),
+                "profile_updated_at": datetime.utcnow(),
+            },
+            "$inc": {"profile_version": 1},
+        },
+    )
     return {"message": "Profile updated successfully"}
 
 
@@ -74,7 +85,16 @@ def reset_profile(authorization: str = Header(None)):
     user = users_collection.find_one({"email": email})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    users_collection.update_one({"email": email}, {"$set": {"profile": {}}})
+    users_collection.update_one(
+        {"email": email},
+        {
+            "$set": {
+                "profile": {},
+                "profile_updated_at": datetime.utcnow(),
+            },
+            "$inc": {"profile_version": 1},
+        },
+    )
     return {"message": "Profile reset successfully"}
 
 

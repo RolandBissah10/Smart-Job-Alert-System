@@ -4,7 +4,7 @@ import { BarChart2, TrendingUp, Target, Zap, RefreshCw } from 'lucide-react';
 
 const REFRESH_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
 
-export default function Analytics() {
+export default function Analytics({ refreshKey }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -28,12 +28,12 @@ export default function Analytics() {
     load();
     const interval = setInterval(() => load(), REFRESH_INTERVAL);
     return () => clearInterval(interval);
-  }, [load]);
+  }, [load, refreshKey]);
 
   if (loading) return <p className="loading-text">Loading analytics...</p>;
 
   const profile = data?.profile || {};
-  const hasProfile = !!(profile.tech_stack?.length || profile.roles?.length);
+  const hasProfile = !!(profile.skills?.length || profile.tech_stack?.length || profile.roles?.length);
 
   const updatedLabel = lastUpdated
     ? lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })

@@ -17,7 +17,11 @@ try:
     jobs_collection.create_index("url", unique=True, sparse=True)
     jobs_collection.create_index([("created_at", DESCENDING)])
     jobs_collection.create_index("created_at", expireAfterSeconds=15 * 24 * 60 * 60)
-    alerts_collection.create_index([("user_id", 1), ("job_id", 1)], unique=True, sparse=True)
+    try:
+        alerts_collection.drop_index("user_id_1_job_id_1")
+    except Exception:
+        pass
+    alerts_collection.create_index([("user_id", 1), ("profile_version", 1), ("job_id", 1)], unique=True, sparse=True)
     saved_jobs_collection.create_index([("user_email", 1), ("job_id", 1)], unique=True, sparse=True)
 except Exception as e:
     logger.warning(f"Index creation skipped: {e}")
