@@ -5,34 +5,64 @@ def normalize(text: str) -> str:
     return text.lower().strip() if text else ""
 
 
+def get_match_source(profile: dict) -> str:
+    match_source = (profile.get("match_source") or "profile").strip().lower()
+    return match_source if match_source in {"profile", "cv", "both"} else "profile"
+
+
 def profile_has_match_criteria(profile: dict) -> bool:
-    return bool(profile.get("skills") or profile.get("tech_stack") or profile.get("roles"))
+    has_profile = bool(profile.get("skills") or profile.get("tech_stack") or profile.get("roles"))
+    has_cv = bool(profile.get("cv_keywords"))
+    match_source = get_match_source(profile)
+
+    if match_source == "profile":
+        return has_profile
+    if match_source == "cv":
+        return has_cv
+    return has_profile or has_cv
 
 
 def _get_keywords_from_profile(profile: dict) -> list:
     keywords = []
-    # Support both new "skills" field and legacy "tech_stack" field
-    keywords.extend(profile.get("skills", []) or profile.get("tech_stack", []))
-    keywords.extend(profile.get("roles", []))
-    industry = profile.get("industry", "")
-    if industry:
-        keywords.append(industry.replace("_", " "))
+    match_source = get_match_source(profile)
+
+    if match_source in {"profile", "both"}:
+        keywords.extend(profile.get("skills", []) or profile.get("tech_stack", []))
+        keywords.extend(profile.get("roles", []))
+        industry = profile.get("industry", "")
+        if industry:
+            keywords.append(industry.replace("_", " "))
+
+    if match_source in {"cv", "both"}:
+        keywords.extend(profile.get("cv_keywords", []))
     return keywords
 
 
 def _get_profile_skills(profile: dict) -> list:
+    if get_match_source(profile) == "cv":
+        return []
     return profile.get("skills", []) or profile.get("tech_stack", [])
 
 
 def _get_profile_roles(profile: dict) -> list:
+    if get_match_source(profile) == "cv":
+        return []
     return profile.get("roles", [])
 
 
 def _get_profile_industry_terms(profile: dict) -> list:
+    if get_match_source(profile) == "cv":
+        return []
     industry = profile.get("industry", "")
     if not industry:
         return []
     return [industry.replace("_", " ")]
+
+
+def _get_cv_keywords(profile: dict) -> list:
+    if get_match_source(profile) == "profile":
+        return []
+    return profile.get("cv_keywords", [])
 
 
 def _match_location(job: dict, profile: dict) -> bool:
@@ -89,6 +119,8 @@ def _job_matches_profile(job: dict, profile: dict, title_hits: list, description
     skills = _get_profile_skills(profile)
     roles = _get_profile_roles(profile)
     industry_terms = _get_profile_industry_terms(profile)
+    cv_keywords = _get_cv_keywords(profile)
+    match_source = get_match_source(profile)
 
     role_title_hits = _count_keyword_hits(title, roles)
     role_description_hits = _count_keyword_hits(description, roles)
@@ -96,25 +128,42 @@ def _job_matches_profile(job: dict, profile: dict, title_hits: list, description
     skill_description_hits = _count_keyword_hits(description, skills)
     industry_title_hits = _count_keyword_hits(title, industry_terms)
     industry_description_hits = _count_keyword_hits(description, industry_terms)
+    cv_title_hits = _count_keyword_hits(title, cv_keywords)
+    cv_description_hits = _count_keyword_hits(description, cv_keywords)
 
     non_industry_hits = list(dict.fromkeys(
         role_title_hits + role_description_hits + skill_title_hits + skill_description_hits
     ))
     title_non_industry_hits = list(dict.fromkeys(role_title_hits + skill_title_hits))
+    cv_hits = list(dict.fromkeys(cv_title_hits + cv_description_hits))
+
+    profile_match = False
+    cv_match = False
 
     if roles and role_title_hits:
-        return True
-    if roles and role_description_hits and title_non_industry_hits:
-        return True
-    if len(non_industry_hits) >= 2 and title_non_industry_hits:
-        return True
-    if skill_title_hits and role_description_hits:
-        return True
-    if industry_title_hits and len(non_industry_hits) >= 1:
-        return True
-    if industry_description_hits and len(title_non_industry_hits) >= 1:
-        return True
-    return False
+        profile_match = True
+    elif roles and role_description_hits and title_non_industry_hits:
+        profile_match = True
+    elif len(non_industry_hits) >= 2 and title_non_industry_hits:
+        profile_match = True
+    elif skill_title_hits and role_description_hits:
+        profile_match = True
+    elif industry_title_hits and len(non_industry_hits) >= 1:
+        profile_match = True
+    elif industry_description_hits and len(title_non_industry_hits) >= 1:
+        profile_match = True
+
+    if cv_keywords:
+        if cv_title_hits:
+            cv_match = True
+        elif len(cv_hits) >= 2:
+            cv_match = True
+
+    if match_source == "profile":
+        return profile_match
+    if match_source == "cv":
+        return cv_match
+    return profile_match or cv_match
 
 
 def match_score(job, keywords):
@@ -181,7 +230,9 @@ def match_jobs_to_active_users(jobs):
     matches = []
     users = list(users_collection.find({"is_active": True}))
     for user in users:
-        profile = user.get("profile", {})
+        profile = dict(user.get("profile", {}))
+        profile["match_source"] = user.get("match_source", "profile")
+        profile["cv_keywords"] = user.get("cv_data", {}).get("keywords", [])
         if not profile_has_match_criteria(profile):
             continue
         for scored in get_matching_jobs_for_profile(jobs, profile):

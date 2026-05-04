@@ -33,7 +33,12 @@ export default function Analytics({ refreshKey }) {
   if (loading) return <p className="loading-text">Loading analytics...</p>;
 
   const profile = data?.profile || {};
-  const hasProfile = !!(profile.skills?.length || profile.tech_stack?.length || profile.roles?.length);
+  const hasMatchInput = !!(
+    profile.skills?.length ||
+    profile.tech_stack?.length ||
+    profile.roles?.length ||
+    data?.cv_uploaded
+  );
 
   const updatedLabel = lastUpdated
     ? lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -87,15 +92,21 @@ export default function Analytics({ refreshKey }) {
           <div className="stat-card">
             <div className="stat-icon"><Zap size={24} /></div>
             <div className="stat-info">
-              <span className="stat-value stat-value-sm">{hasProfile ? 'Active' : 'Inactive'}</span>
+              <span className="stat-value stat-value-sm">{hasMatchInput ? 'Active' : 'Inactive'}</span>
               <span className="stat-label">Matching</span>
             </div>
           </div>
         </div>
 
-        {hasProfile && (
+        {hasMatchInput && (
           <div className="analytics-profile-summary">
             <h3>Your Profile Summary</h3>
+            {data?.match_source && (
+              <div className="profile-summary-row">
+                <span className="summary-label">Match Source</span>
+                <span className="chip selected readonly">{data.match_source}</span>
+              </div>
+            )}
             {profile.tech_stack?.length > 0 && (
               <div className="profile-summary-row">
                 <span className="summary-label">Tech Stack</span>
@@ -137,9 +148,9 @@ export default function Analytics({ refreshKey }) {
           </div>
         )}
 
-        {!hasProfile && (
+        {!hasMatchInput && (
           <div className="empty-state" style={{ paddingTop: 32 }}>
-            <p>Set up your profile to see personalized analytics and match data.</p>
+            <p>Set up your profile or upload a CV to see personalized analytics and match data.</p>
           </div>
         )}
       </div>

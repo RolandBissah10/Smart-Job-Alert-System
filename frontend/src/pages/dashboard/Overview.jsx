@@ -93,11 +93,11 @@ export default function Overview({ onNavigate, refreshKey }) {
         <div className="profile-prompt">
           <AlertCircle size={20} />
           <div>
-            <strong>Complete your profile to get personalized job matches</strong>
-            <p>Tell us about your skills and preferences to start receiving alerts.</p>
+            <strong>Add a profile or CV to get personalized job matches</strong>
+            <p>Use your structured profile, an uploaded CV, or both together to start receiving relevant alerts.</p>
           </div>
           <button className="button" onClick={() => onNavigate('profile')}>
-            Set Up Profile
+            Open Matching Setup
           </button>
         </div>
       )}

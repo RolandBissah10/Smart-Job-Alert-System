@@ -46,10 +46,10 @@ export default function Jobs({ onNavigate, refreshKey }) {
     return (
       <div className="empty-state">
         <Zap size={48} />
-        <h3>Complete your profile first</h3>
-        <p>We need to know your skills and preferences to show you matching jobs.</p>
+        <h3>Add your matching details first</h3>
+        <p>Set up your profile, upload a CV, or use both so we can show you relevant jobs.</p>
         <button className="button" onClick={() => onNavigate('profile')}>
-          Set Up Profile
+          Open Matching Setup
         </button>
       </div>
     );

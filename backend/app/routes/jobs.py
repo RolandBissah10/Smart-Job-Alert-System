@@ -10,6 +10,13 @@ from datetime import datetime
 router = APIRouter(prefix="/jobs", tags=["Jobs"])
 
 
+def _build_match_profile(user: dict) -> dict:
+    profile = dict(user.get("profile", {}))
+    profile["match_source"] = user.get("match_source", "profile")
+    profile["cv_keywords"] = user.get("cv_data", {}).get("keywords", [])
+    return profile
+
+
 def _require_auth(authorization: str):
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Missing or invalid token")
@@ -38,7 +45,7 @@ def get_job_feed(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    profile = user.get("profile", {})
+    profile = _build_match_profile(user)
     if not profile_has_match_criteria(profile):
         return {"jobs": [], "total": 0, "page": page, "page_size": page_size, "profile_required": True}
 
@@ -76,6 +83,7 @@ def run_pipeline():
     for item in grouped_matches.values():
         user = item["user"]
         profile_version = user.get("profile_version", 1)
+        match_source = user.get("match_source", "profile")
         jobs_for_user = []
         for job in item["jobs"]:
             if alerts_collection.find_one({
@@ -95,6 +103,7 @@ def run_pipeline():
                 "user_id": user["_id"],
                 "user_email": user["email"],
                 "profile_version": profile_version,
+                "match_source": match_source,
                 "job_id": job["_id"],
                 "job_title": job.get("title"),
                 "job_company": job.get("company"),

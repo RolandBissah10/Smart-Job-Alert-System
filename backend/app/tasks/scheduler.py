@@ -14,6 +14,13 @@ logger = logging.getLogger(__name__)
 scheduler = BackgroundScheduler()
 
 
+def _build_match_profile(user: dict) -> dict:
+    profile = dict(user.get("profile", {}))
+    profile["match_source"] = user.get("match_source", "profile")
+    profile["cv_keywords"] = user.get("cv_data", {}).get("keywords", [])
+    return profile
+
+
 def _cleanup_stale_jobs():
     """Delete jobs not seen in the last 7 days, skipping any a user has saved."""
     cutoff = datetime.utcnow() - timedelta(days=7)
@@ -54,7 +61,7 @@ def run_job_pipeline():
 
     total_sent = 0
     for user in users:
-        profile = user.get("profile", {})
+        profile = _build_match_profile(user)
         profile_version = user.get("profile_version", 1)
         if not profile_has_match_criteria(profile):
             logger.info(f"Skipping {user['email']} - no profile preferences set")
@@ -96,6 +103,7 @@ def run_job_pipeline():
                     "user_id": user["_id"],
                     "user_email": user["email"],
                     "profile_version": profile_version,
+                    "match_source": user.get("match_source", "profile"),
                     "job_id": job["_id"],
                     "job_title": job.get("title", ""),
                     "job_company": job.get("company", ""),

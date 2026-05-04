@@ -11,6 +11,10 @@ class UserProfile(BaseModel):
     job_type: Optional[str] = "Full-time"
 
 
+class MatchSourceUpdate(BaseModel):
+    match_source: str
+
+
 class UserSignup(BaseModel):
     username: str
     email: EmailStr

@@ -6,6 +6,13 @@ from app.db.database import alerts_collection
 from datetime import datetime
 
 
+def _build_match_profile(user: dict) -> dict:
+    profile = dict(user.get("profile", {}))
+    profile["match_source"] = user.get("match_source", "profile")
+    profile["cv_keywords"] = user.get("cv_data", {}).get("keywords", [])
+    return profile
+
+
 @celery.task
 def run_job_pipeline():
     jobs = fetch_jobs()
@@ -28,6 +35,7 @@ def run_job_pipeline():
             "user_id": user["_id"],
             "user_email": user["email"],
             "profile_version": profile_version,
+            "match_source": user.get("match_source", "profile"),
             "job_id": job["_id"],
             "job_title": job.get("title", ""),
             "job_company": job.get("company", ""),

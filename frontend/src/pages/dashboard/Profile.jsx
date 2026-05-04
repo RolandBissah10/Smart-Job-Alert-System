@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getMe, updateProfile, resetProfile } from '../../services/api';
+import { getMe, updateProfile, resetProfile, uploadCv, deleteCv, updateMatchSource } from '../../services/api';
 import { CheckCircle, ChevronRight, ChevronLeft, ChevronDown } from 'lucide-react';
 
 const INDUSTRIES = [
@@ -170,6 +170,11 @@ const INDUSTRY_ROLES = {
 
 const EXPERIENCE_OPTIONS = ['Junior', 'Mid', 'Senior'];
 const JOB_TYPE_OPTIONS = ['Full-time', 'Part-time', 'Contract', 'Internship', 'Freelance'];
+const MATCH_SOURCE_OPTIONS = [
+  { value: 'profile', label: 'Profile Only' },
+  { value: 'cv', label: 'CV Only' },
+  { value: 'both', label: 'Profile + CV' },
+];
 
 function persistCustomProfileFields(selectedIndustry, selectedSkills, selectedRoles) {
   Object.keys(localStorage)
@@ -211,9 +216,13 @@ export default function Profile({ onProfileChange }) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [uploadingCv, setUploadingCv] = useState(false);
+  const [removingCv, setRemovingCv] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const [error, setError] = useState('');
   const [profileExists, setProfileExists] = useState(false);
+  const [matchSource, setMatchSource] = useState('profile');
+  const [cvData, setCvData] = useState({ has_cv: false, filename: '', keyword_count: 0, preview: '' });
 
   const skillCategories = industry ? (INDUSTRY_SKILLS[industry] || []) : [];
   const allPresetSkills = skillCategories.flatMap((c) => c.items);
@@ -226,8 +235,9 @@ export default function Profile({ onProfileChange }) {
         const savedIndustry = p.industry || '';
         const backendSkills = p.skills || p.tech_stack || [];
         const backendRoles = p.roles || [];
+        const currentCvData = data.cv_data || { has_cv: false };
 
-        if (savedIndustry || backendSkills.length || backendRoles.length || p.experience_level) {
+        if (savedIndustry || backendSkills.length || backendRoles.length || p.experience_level || currentCvData.has_cv) {
           setProfileExists(true);
         }
         setIndustry(savedIndustry);
@@ -240,10 +250,61 @@ export default function Profile({ onProfileChange }) {
         setExperienceLevel(p.experience_level || '');
         setLocation(p.location || 'Remote');
         setJobType(p.job_type || 'Full-time');
+        setMatchSource(data.match_source || 'profile');
+        setCvData(currentCvData);
         persistCustomProfileFields(savedIndustry, backendSkills, backendRoles);
       })
       .catch(console.error);
   }, []);
+
+  const hasProfileData = !!(industry || skills.length || roles.length || experienceLevel);
+  const canUseBoth = hasProfileData && cvData.has_cv;
+
+  const handleCvUpload = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploadingCv(true);
+    setError('');
+    try {
+      const result = await uploadCv(file);
+      setCvData(result.cv_data || { has_cv: true, filename: file.name });
+      setMatchSource(result.match_source || (hasProfileData ? 'both' : 'cv'));
+      setProfileExists(true);
+      setSaved(true);
+      onProfileChange?.();
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      event.target.value = '';
+      setUploadingCv(false);
+    }
+  };
+
+  const handleCvRemove = async () => {
+    setRemovingCv(true);
+    setError('');
+    try {
+      const result = await deleteCv();
+      setCvData({ has_cv: false, filename: '', keyword_count: 0, preview: '' });
+      setMatchSource(result.match_source || 'profile');
+      setProfileExists(hasProfileData);
+      setSaved(true);
+      onProfileChange?.();
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setRemovingCv(false);
+    }
+  };
+
+  const persistMatchSource = async (nextMatchSource) => {
+    const result = await updateMatchSource(nextMatchSource);
+    setMatchSource(result.match_source || nextMatchSource);
+    onProfileChange?.();
+  };
 
   // When industry changes, save current industry's custom skills, then load the new industry's
   const handleIndustryChange = (value) => {
@@ -323,6 +384,10 @@ export default function Profile({ onProfileChange }) {
         location,
         job_type: jobType,
       });
+      let nextMatchSource = matchSource;
+      if (nextMatchSource === 'cv' && !cvData.has_cv) nextMatchSource = 'profile';
+      if (nextMatchSource === 'both' && !cvData.has_cv) nextMatchSource = 'profile';
+      await persistMatchSource(nextMatchSource);
       persistCustomProfileFields(industry, skills, roles);
       setSaved(true);
       setProfileExists(true);
@@ -354,8 +419,13 @@ export default function Profile({ onProfileChange }) {
       setJobType('Full-time');
       setExpandedCategories(new Set());
       setStep(1);
-      setProfileExists(false);
+      setProfileExists(cvData.has_cv);
       setConfirmReset(false);
+      if (cvData.has_cv) {
+        await persistMatchSource('cv');
+      } else {
+        setMatchSource('profile');
+      }
       onProfileChange?.();
     } catch (err) {
       setError(err.message);
@@ -369,6 +439,67 @@ export default function Profile({ onProfileChange }) {
 
   return (
     <div className="profile-page">
+      <div className="dashboard-card" style={{ marginBottom: 24 }}>
+        <h3 style={{ marginBottom: 8 }}>Matching Inputs</h3>
+        <p style={{ marginBottom: 16 }}>
+          Choose whether job matching should use your structured profile, your uploaded CV, or both together.
+        </p>
+
+        <div className="chip-grid" style={{ marginBottom: 16 }}>
+          {MATCH_SOURCE_OPTIONS.map((option) => {
+            const disabled =
+              (option.value === 'profile' && !hasProfileData) ||
+              (option.value === 'cv' && !cvData.has_cv) ||
+              (option.value === 'both' && !canUseBoth);
+
+            return (
+              <button
+                key={option.value}
+                type="button"
+                className={`chip ${matchSource === option.value ? 'selected' : ''}`}
+                disabled={disabled || saving || uploadingCv || removingCv}
+                onClick={() => persistMatchSource(option.value).catch((err) => setError(err.message))}
+              >
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="profile-section">
+          <label className="profile-label">Upload CV</label>
+          <p style={{ marginBottom: 12 }}>
+            Upload a PDF, DOCX, TXT, or MD CV and we&apos;ll extract keywords to help match jobs.
+          </p>
+          <input
+            type="file"
+            accept=".pdf,.docx,.txt,.md"
+            onChange={handleCvUpload}
+            disabled={uploadingCv || removingCv}
+          />
+          {uploadingCv && <p style={{ marginTop: 8 }}>Uploading and analyzing CV...</p>}
+          {cvData.has_cv && (
+            <div style={{ marginTop: 12 }}>
+              <p><strong>{cvData.filename}</strong> uploaded</p>
+              <p>{cvData.keyword_count || 0} CV keywords extracted</p>
+              {cvData.preview && (
+                <p className="alert alert-info" style={{ marginTop: 8 }}>
+                  {cvData.preview}
+                </p>
+              )}
+              <button
+                type="button"
+                className="button button-danger"
+                onClick={handleCvRemove}
+                disabled={removingCv}
+              >
+                {removingCv ? 'Removing CV...' : 'Remove CV'}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
       <div className="wizard-header">
         <div className="wizard-header-top">
           <div>

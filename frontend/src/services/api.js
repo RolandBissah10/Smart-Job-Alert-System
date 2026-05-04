@@ -23,11 +23,14 @@ async function refreshAccessToken() {
 
 async function request(path, options = {}, isRetry = false) {
   const token = localStorage.getItem('token');
+  const isFormData = options.body instanceof FormData;
   const headers = {
-    'Content-Type': 'application/json',
     ...(token && { Authorization: `Bearer ${token}` }),
     ...(options.headers || {}),
   };
+  if (!isFormData) {
+    headers['Content-Type'] = 'application/json';
+  }
 
   const response = await fetch(`${BASE_URL}${path}`, { headers, ...options });
 
@@ -78,6 +81,26 @@ export function updateProfile(profile) {
 
 export function resetProfile() {
   return request('/users/profile', { method: 'DELETE' });
+}
+
+export function uploadCv(file) {
+  const formData = new FormData();
+  formData.append('file', file);
+  return request('/users/cv', {
+    method: 'POST',
+    body: formData,
+  });
+}
+
+export function deleteCv() {
+  return request('/users/cv', { method: 'DELETE' });
+}
+
+export function updateMatchSource(matchSource) {
+  return request('/users/match-source', {
+    method: 'PUT',
+    body: JSON.stringify({ match_source: matchSource }),
+  });
 }
 
 export function getDashboard() {

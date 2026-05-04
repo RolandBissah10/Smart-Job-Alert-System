@@ -7,6 +7,13 @@ from app.services.matcher import score_jobs_for_user, profile_has_match_criteria
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
 
+def _build_match_profile(user: dict) -> dict:
+    profile = dict(user.get("profile", {}))
+    profile["match_source"] = user.get("match_source", "profile")
+    profile["cv_keywords"] = user.get("cv_data", {}).get("keywords", [])
+    return profile
+
+
 def _require_auth(authorization: str):
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Missing or invalid token")
@@ -25,7 +32,7 @@ def get_dashboard(authorization: str = Header(None)):
         raise HTTPException(status_code=404, detail="User not found")
 
     user_id = user["_id"]
-    profile = user.get("profile", {})
+    profile = _build_match_profile(user)
     profile_version = user.get("profile_version", 1)
     profile_complete = profile_has_match_criteria(profile)
 
@@ -62,8 +69,10 @@ def get_dashboard(authorization: str = Header(None)):
 
     return {
         "email": email,
-        "profile": profile,
+        "profile": user.get("profile", {}),
         "profile_complete": profile_complete,
+        "match_source": user.get("match_source", "profile"),
+        "cv_uploaded": bool(user.get("cv_data", {}).get("text")),
         "stats": {
             "saved_jobs": saved_count,
             "alerts_sent": alerts_count,
