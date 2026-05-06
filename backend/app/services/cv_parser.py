@@ -22,7 +22,15 @@ def extract_text_from_cv(filename: str, content: bytes) -> str:
         return _clean_text(content.decode("utf-8", errors="ignore"))
 
     if extension == "pdf":
-        from pypdf import PdfReader
+        try:
+            from pypdf import PdfReader
+        except ImportError:
+            try:
+                from PyPDF2 import PdfReader
+            except ImportError as exc:
+                raise RuntimeError(
+                    "PDF parsing dependency is missing. Install `pypdf` (preferred) or `PyPDF2`."
+                ) from exc
 
         reader = PdfReader(BytesIO(content))
         parts = [page.extract_text() or "" for page in reader.pages]

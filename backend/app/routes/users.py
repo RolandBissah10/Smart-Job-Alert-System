@@ -106,6 +106,8 @@ async def upload_cv(file: UploadFile = File(...), authorization: str = Header(No
         text = extract_text_from_cv(file.filename or "cv", content)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Could not parse CV: {e}")
 
