@@ -300,12 +300,6 @@ export default function Profile({ onProfileChange }) {
     }
   };
 
-  const persistMatchSource = async (nextMatchSource) => {
-    const result = await updateMatchSource(nextMatchSource);
-    setMatchSource(result.match_source || nextMatchSource);
-    onProfileChange?.();
-  };
-
   // When industry changes, save current industry's custom skills, then load the new industry's
   const handleIndustryChange = (value) => {
     // Persist current industry's custom skills before switching
@@ -372,22 +366,37 @@ export default function Profile({ onProfileChange }) {
     localStorage.setItem('customRoles', JSON.stringify(customs));
   };
 
+  const buildProfilePayload = () => ({
+    industry: industry || null,
+    skills,
+    roles,
+    experience_level: experienceLevel || null,
+    location,
+    job_type: jobType,
+  });
+
+  const persistMatchSource = async (nextMatchSource, { syncProfile = true } = {}) => {
+    if (syncProfile && nextMatchSource !== 'cv' && hasProfileData) {
+      await updateProfile(buildProfilePayload());
+      persistCustomProfileFields(industry, skills, roles);
+      setProfileExists(true);
+    }
+
+    const result = await updateMatchSource(nextMatchSource);
+    setMatchSource(result.match_source || nextMatchSource);
+    onProfileChange?.();
+    return result;
+  };
+
   const handleSave = async () => {
     setSaving(true);
     setError('');
     try {
-      await updateProfile({
-        industry: industry || null,
-        skills,
-        roles,
-        experience_level: experienceLevel || null,
-        location,
-        job_type: jobType,
-      });
+      await updateProfile(buildProfilePayload());
       let nextMatchSource = matchSource;
       if (nextMatchSource === 'cv' && !cvData.has_cv) nextMatchSource = 'profile';
       if (nextMatchSource === 'both' && !cvData.has_cv) nextMatchSource = 'profile';
-      await persistMatchSource(nextMatchSource);
+      await persistMatchSource(nextMatchSource, { syncProfile: false });
       persistCustomProfileFields(industry, skills, roles);
       setSaved(true);
       setProfileExists(true);
@@ -436,16 +445,35 @@ export default function Profile({ onProfileChange }) {
 
   const customSkills = skills.filter((s) => !allPresetSkills.includes(s));
   const customRoles = roles.filter((r) => !roleOptions.includes(r));
+  const stepTitles = ['Industry', 'Skills', 'Role & Level', 'Location'];
+  const missingMatchModeRequirements = [];
+
+  if (!hasProfileData) {
+    missingMatchModeRequirements.push('save your profile preferences');
+  }
+  if (!cvData.has_cv) {
+    missingMatchModeRequirements.push('upload a CV');
+  }
 
   return (
     <div className="profile-page">
-      <div className="dashboard-card" style={{ marginBottom: 24 }}>
-        <h3 style={{ marginBottom: 8 }}>Matching Inputs</h3>
-        <p style={{ marginBottom: 16 }}>
-          Choose whether job matching should use your structured profile, your uploaded CV, or both together.
-        </p>
+      <div className="dashboard-card profile-intro-card" style={{ marginBottom: 24 }}>
+        <div className="profile-intro-header">
+          <div className="profile-intro-copy">
+            <h3 className="profile-panel-title">Matching Inputs</h3>
+            <p className="profile-panel-text">
+              Choose whether job matching should use your structured profile, your uploaded CV, or both together.
+            </p>
+          </div>
+          <div className="profile-intro-meta">
+            <span className="profile-intro-meta-label">Current mode</span>
+            <strong className="profile-intro-meta-value">
+              {MATCH_SOURCE_OPTIONS.find((option) => option.value === matchSource)?.label || 'Profile Only'}
+            </strong>
+          </div>
+        </div>
 
-        <div className="chip-grid" style={{ marginBottom: 16 }}>
+        <div className="chip-grid match-mode-grid">
           {MATCH_SOURCE_OPTIONS.map((option) => {
             const disabled =
               (option.value === 'profile' && !hasProfileData) ||
@@ -456,7 +484,7 @@ export default function Profile({ onProfileChange }) {
               <button
                 key={option.value}
                 type="button"
-                className={`chip ${matchSource === option.value ? 'selected' : ''}`}
+                className={`chip ${matchSource === option.value ? 'selected' : ''} ${disabled ? 'chip-disabled' : ''}`}
                 disabled={disabled || saving || uploadingCv || removingCv}
                 onClick={() => persistMatchSource(option.value).catch((err) => setError(err.message))}
               >
@@ -465,25 +493,31 @@ export default function Profile({ onProfileChange }) {
             );
           })}
         </div>
+        {missingMatchModeRequirements.length > 0 && (
+          <p className="match-mode-helper">
+            To unlock all matching modes, {missingMatchModeRequirements.join(' and ')}.
+          </p>
+        )}
 
-        <div className="profile-section">
+        <div className="profile-section cv-panel">
           <label className="profile-label">Upload CV</label>
-          <p style={{ marginBottom: 12 }}>
+          <p className="profile-panel-text" style={{ marginBottom: 12 }}>
             Upload a PDF, DOCX, TXT, or MD CV and we&apos;ll extract keywords to help match jobs.
           </p>
           <input
             type="file"
+            className="cv-file-input"
             accept=".pdf,.docx,.txt,.md"
             onChange={handleCvUpload}
             disabled={uploadingCv || removingCv}
           />
-          {uploadingCv && <p style={{ marginTop: 8 }}>Uploading and analyzing CV...</p>}
+          {uploadingCv && <p className="profile-upload-state" style={{ marginTop: 8 }}>Uploading and analyzing CV...</p>}
           {cvData.has_cv && (
-            <div style={{ marginTop: 12 }}>
-              <p><strong>{cvData.filename}</strong> uploaded</p>
-              <p>{cvData.keyword_count || 0} CV keywords extracted</p>
+            <div className="cv-summary" style={{ marginTop: 12 }}>
+              <p className="cv-summary-name"><strong>{cvData.filename}</strong> uploaded</p>
+              <p className="cv-summary-meta">{cvData.keyword_count || 0} CV keywords extracted</p>
               {cvData.preview && (
-                <p className="alert alert-info" style={{ marginTop: 8 }}>
+                <p className="alert alert-info cv-summary-preview" style={{ marginTop: 8 }}>
                   {cvData.preview}
                 </p>
               )}
@@ -500,9 +534,9 @@ export default function Profile({ onProfileChange }) {
         </div>
       </div>
 
-      <div className="wizard-header">
+      <div className="wizard-header profile-wizard-header">
         <div className="wizard-header-top">
-          <div>
+          <div className="profile-step">
             <h2>{profileExists ? 'Update Your Profile' : 'Set Up Your Profile'}</h2>
             <p>Help us match you with the right jobs</p>
           </div>
@@ -549,17 +583,16 @@ export default function Profile({ onProfileChange }) {
           ))}
         </div>
         <div className="wizard-step-labels">
-          <span>Industry</span>
-          <span>Skills</span>
-          <span>Role &amp; Level</span>
-          <span>Location</span>
+          {stepTitles.map((label, index) => (
+            <span key={label} className={step === index + 1 ? 'active' : ''}>{label}</span>
+          ))}
         </div>
       </div>
 
-      <div className="wizard-body">
+      <div className="wizard-body profile-wizard-body">
         {/* Step 1 — Industry selection */}
         {step === 1 && (
-          <div>
+          <div className="profile-step">
             <h3>What industry do you work in?</h3>
             <p>Pick the one that best describes your field</p>
             <div className="industry-grid">
@@ -579,7 +612,7 @@ export default function Profile({ onProfileChange }) {
 
         {/* Step 2 — Skills */}
         {step === 2 && (
-          <div>
+          <div className="profile-step">
             <h3>What are your key skills?</h3>
             <p>Select all that apply, or add your own below</p>
 
@@ -673,7 +706,7 @@ export default function Profile({ onProfileChange }) {
 
         {/* Step 3 — Role & Experience */}
         {step === 3 && (
-          <div>
+          <div className="profile-step">
             <h3>What is your role and experience level?</h3>
             <div className="profile-section">
               <label className="profile-label">Role (select all that apply)</label>

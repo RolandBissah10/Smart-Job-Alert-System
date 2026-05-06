@@ -1,5 +1,5 @@
-from fastapi import APIRouter, HTTPException, Header, UploadFile, File
-from app.models.user import UserSignup, UserUpdate, UserProfile, MatchSourceUpdate
+from fastapi import APIRouter, HTTPException, Header, UploadFile, File, Body
+from app.models.user import UserSignup, UserUpdate, UserProfile
 from app.db.database import users_collection
 from app.auth_utils import hash_password
 from app.auth import verify_access_token
@@ -175,13 +175,13 @@ def delete_cv(authorization: str = Header(None)):
 
 
 @router.put("/match-source")
-def update_match_source(body: MatchSourceUpdate, authorization: str = Header(None)):
+def update_match_source(body: dict = Body(...), authorization: str = Header(None)):
     email = _require_auth(authorization)
     user = users_collection.find_one({"email": email})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    match_source = (body.match_source or "").strip().lower()
+    match_source = str(body.get("match_source", "")).strip().lower()
     if match_source not in {"profile", "cv", "both"}:
         raise HTTPException(status_code=400, detail="match_source must be one of: profile, cv, both")
 
