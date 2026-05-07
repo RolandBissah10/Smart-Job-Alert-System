@@ -16,6 +16,7 @@ try:
     users_collection.create_index("email", unique=True)
     jobs_collection.create_index("url", unique=True, sparse=True)
     jobs_collection.create_index([("created_at", DESCENDING)])
+    jobs_collection.create_index([("last_seen_at", DESCENDING)])
     jobs_collection.create_index("created_at", expireAfterSeconds=15 * 24 * 60 * 60)
     try:
         alerts_collection.drop_index("user_id_1_job_id_1")

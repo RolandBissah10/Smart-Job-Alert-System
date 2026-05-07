@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Header, Query
 from app.services.scraper import fetch_jobs, save_jobs
-from app.services.matcher import match_jobs_to_active_users, score_jobs_for_user, profile_has_match_criteria
+from app.services.matcher import get_matching_jobs_for_profile, score_jobs_for_user, profile_has_match_criteria
 from app.services.notifier import send_email
 from app.services.job_filters import build_fresh_jobs_filter
 from app.db.database import alerts_collection, users_collection, jobs_collection
@@ -71,28 +71,41 @@ def get_job_feed(
 def run_pipeline():
     jobs = fetch_jobs()
     new_jobs = save_jobs(jobs)
-    matches = match_jobs_to_active_users(new_jobs)
-    grouped_matches = {}
-    for match in matches:
-        user = match["user"]
-        user_id = str(user["_id"])
-        grouped_matches.setdefault(user_id, {"user": user, "jobs": []})
-        grouped_matches[user_id]["jobs"].append(match["job"])
+    active_users = list(users_collection.find({"is_active": True}))
 
     delivered = []
-    for item in grouped_matches.values():
-        user = item["user"]
+    for user in active_users:
+        profile = _build_match_profile(user)
         profile_version = user.get("profile_version", 1)
         match_source = user.get("match_source", "profile")
-        jobs_for_user = []
-        for job in item["jobs"]:
-            if alerts_collection.find_one({
+        if not profile_has_match_criteria(profile):
+            continue
+
+        sent_ids = [
+            a["job_id"]
+            for a in alerts_collection.find({
                 "user_id": user["_id"],
                 "profile_version": profile_version,
-                "job_id": job["_id"],
-            }):
-                continue
-            jobs_for_user.append(job)
+            }, {"job_id": 1})
+        ]
+
+        fresh_filter = build_fresh_jobs_filter(7)
+        unalerted = list(
+            jobs_collection.find({
+                **fresh_filter,
+                "_id": {"$nin": sent_ids},
+            }).limit(500)
+        )
+        if len(unalerted) < 10:
+            fallback_filter = build_fresh_jobs_filter(30)
+            unalerted = list(
+                jobs_collection.find({
+                    **fallback_filter,
+                    "_id": {"$nin": sent_ids},
+                }).limit(500)
+            )
+
+        jobs_for_user = [item["job"] for item in get_matching_jobs_for_profile(unalerted, profile)[:20]]
 
         if not jobs_for_user:
             continue
@@ -112,4 +125,9 @@ def run_pipeline():
             })
             delivered.append({"email": user["email"], "job_url": job.get("url")})
 
-    return {"delivered": delivered, "matches": len(delivered)}
+    return {
+        "delivered": delivered,
+        "matches": len(delivered),
+        "new_jobs_fetched": len(new_jobs),
+        "active_users_checked": len(active_users),
+    }
