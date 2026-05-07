@@ -22,36 +22,47 @@ async function refreshAccessToken() {
 }
 
 async function request(path, options = {}, isRetry = false) {
-  const token = localStorage.getItem('token');
-  const isFormData = options.body instanceof FormData;
-  const headers = {
-    ...(token && { Authorization: `Bearer ${token}` }),
-    ...(options.headers || {}),
-  };
-  if (!isFormData) {
-    headers['Content-Type'] = 'application/json';
-  }
-
-  const response = await fetch(`${BASE_URL}${path}`, { headers, ...options });
-
-  if (response.status === 401 && !isRetry) {
-    try {
-      const newToken = await refreshAccessToken();
-      return request(path, {
-        ...options,
-        headers: { ...options.headers, Authorization: `Bearer ${newToken}` },
-      }, true);
-    } catch {
-      throw new Error('Session expired. Please log in again.');
+  try {
+    const token = localStorage.getItem('token');
+    const isFormData = options.body instanceof FormData;
+    const headers = {
+      ...(token && { Authorization: `Bearer ${token}` }),
+      ...(options.headers || {}),
+    };
+    if (!isFormData) {
+      headers['Content-Type'] = 'application/json';
     }
-  }
 
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.detail || data.message || 'API request failed');
-  }
+    const response = await fetch(`${BASE_URL}${path}`, { headers, ...options });
 
-  return data;
+    if (response.status === 401 && !isRetry) {
+      try {
+        const newToken = await refreshAccessToken();
+        return request(path, {
+          ...options,
+          headers: { ...options.headers, Authorization: `Bearer ${newToken}` },
+        }, true);
+      } catch {
+        throw new Error('Session expired. Please log in again.');
+      }
+    }
+
+    const contentType = response.headers.get('content-type') || '';
+    const data = contentType.includes('application/json')
+      ? await response.json()
+      : { detail: await response.text() };
+
+    if (!response.ok) {
+      throw new Error(data.detail || data.message || 'API request failed');
+    }
+
+    return data;
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw new Error(`Could not connect to backend at ${BASE_URL}. Check VITE_API_URL, CORS, and whether the Render service is live.`);
+    }
+    throw error;
+  }
 }
 
 export function signup(user) {

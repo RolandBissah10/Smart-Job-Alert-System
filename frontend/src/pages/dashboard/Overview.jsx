@@ -63,26 +63,28 @@ export default function Overview({ onNavigate, refreshKey }) {
           <h2>{username ? `Welcome back, ${username}!` : 'Welcome back!'}</h2>
           <p>Here is a summary of your job alert activity.</p>
         </div>
-        <div className="section-header-actions">
-          <button
-            className="button button-secondary"
-            onClick={handleRefresh}
-            disabled={refreshing || runningPipeline}
-            title="Reload dashboard stats and alerts"
-          >
-            <RefreshCw size={16} className={refreshing ? 'spin' : ''} />
-            {refreshing ? 'Refreshing...' : 'Refresh Dashboard'}
-          </button>
-          <button
-            className="button"
-            onClick={handleRunPipeline}
-            disabled={runningPipeline || refreshing}
-            title="Scrape fresh jobs and run the matching pipeline"
-          >
-            <RefreshCw size={16} className={runningPipeline ? 'spin' : ''} />
-            {runningPipeline ? 'Running Pipeline...' : 'Run Pipeline'}
-          </button>
-        </div>
+        {data?.profile_complete && (
+          <div className="section-header-actions">
+            <button
+              className="button button-secondary"
+              onClick={handleRefresh}
+              disabled={refreshing || runningPipeline}
+              title="Reload dashboard stats and alerts"
+            >
+              <RefreshCw size={16} className={refreshing ? 'spin' : ''} />
+              {refreshing ? 'Refreshing...' : 'Refresh Dashboard'}
+            </button>
+            <button
+              className="button"
+              onClick={handleRunPipeline}
+              disabled={runningPipeline || refreshing}
+              title="Scrape fresh jobs and run the matching pipeline"
+            >
+              <RefreshCw size={16} className={runningPipeline ? 'spin' : ''} />
+              {runningPipeline ? 'Running Pipeline...' : 'Run Pipeline'}
+            </button>
+          </div>
+        )}
       </div>
       {refreshMsg && (
         <p className={`alert ${refreshMsg.startsWith('Refresh failed') ? 'alert-error' : 'alert-success'}`}>
