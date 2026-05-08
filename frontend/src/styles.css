@@ -2021,10 +2021,17 @@ select {
 
   .dashboard-content {
     margin-left: 0;
+    padding-top: 72px;
   }
 
   .dashboard-topbar {
     display: flex;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 9999;
+    width: 100%;
   }
 
   .dashboard-section {

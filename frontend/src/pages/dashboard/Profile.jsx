@@ -202,12 +202,25 @@ function persistCustomProfileFields(selectedIndustry, selectedSkills, selectedRo
   }
 }
 
+function loadCustomIndustries() {
+  const saved = JSON.parse(localStorage.getItem('customIndustries') || '[]');
+  return Array.isArray(saved) ? saved : [];
+}
+
+function persistCustomIndustries(industries) {
+  const next = Array.from(new Set((industries || []).filter(Boolean)));
+  localStorage.setItem('customIndustries', JSON.stringify(next));
+  return next;
+}
+
 export default function Profile({ onProfileChange }) {
   const [step, setStep] = useState(1);
   const [industry, setIndustry] = useState('');
   const [skills, setSkills] = useState([]);
   const [customSkillInput, setCustomSkillInput] = useState('');
   const [customRoleInput, setCustomRoleInput] = useState('');
+  const [customIndustryInput, setCustomIndustryInput] = useState('');
+  const [customIndustries, setCustomIndustries] = useState([]);
   const [expandedCategories, setExpandedCategories] = useState(new Set());
   const [roles, setRoles] = useState([]);
   const [experienceLevel, setExperienceLevel] = useState('');
@@ -237,7 +250,16 @@ export default function Profile({ onProfileChange }) {
         const backendRoles = p.roles || [];
         const currentCvData = data.cv_data || { has_cv: false };
 
-        if (savedIndustry || backendSkills.length || backendRoles.length || p.experience_level || currentCvData.has_cv) {
+        const industryValues = INDUSTRIES.map((item) => item.value);
+        const storedCustomIndustries = loadCustomIndustries();
+        const allCustomIndustries = [...storedCustomIndustries];
+        if (savedIndustry && !industryValues.includes(savedIndustry) && !allCustomIndustries.includes(savedIndustry)) {
+          allCustomIndustries.push(savedIndustry);
+          persistCustomIndustries(allCustomIndustries);
+        }
+        setCustomIndustries(allCustomIndustries);
+
+        if (savedIndustry || backendSkills.length || backendRoles.length || p.experience_level) {
           setProfileExists(true);
         }
         setIndustry(savedIndustry);
@@ -302,6 +324,14 @@ export default function Profile({ onProfileChange }) {
 
   // When industry changes, save current industry's custom skills, then load the new industry's
   const handleIndustryChange = (value) => {
+    if (industry === value) {
+      setIndustry('');
+      setExpandedCategories(new Set());
+      setSkills((prev) => prev.filter((skill) => !allPresetSkills.includes(skill)));
+      setRoles((prev) => prev.filter((role) => !roleOptions.includes(role)));
+      return;
+    }
+
     // Persist current industry's custom skills before switching
     if (industry) {
       const currentCustom = skills.filter((s) => !allPresetSkills.includes(s));
@@ -314,7 +344,7 @@ export default function Profile({ onProfileChange }) {
     setIndustry(value);
     const categories = INDUSTRY_SKILLS[value] || [];
     setExpandedCategories(new Set(categories.length ? [categories[0].label] : []));
-    setSkills(newCustom);  // Start with only this industry's saved custom skills
+    setSkills(newCustom);
     setRoles([]);
   };
 
@@ -428,7 +458,7 @@ export default function Profile({ onProfileChange }) {
       setJobType('Full-time');
       setExpandedCategories(new Set());
       setStep(1);
-      setProfileExists(cvData.has_cv);
+      setProfileExists(false);
       setConfirmReset(false);
       if (cvData.has_cv) {
         await persistMatchSource('cv');
@@ -445,6 +475,12 @@ export default function Profile({ onProfileChange }) {
 
   const customSkills = skills.filter((s) => !allPresetSkills.includes(s));
   const customRoles = roles.filter((r) => !roleOptions.includes(r));
+  const industryOptions = [
+    ...INDUSTRIES,
+    ...customIndustries
+      .filter((value) => !INDUSTRIES.some((item) => item.value === value))
+      .map((value) => ({ value, label: value })),
+  ];
   const stepTitles = ['Industry', 'Skills', 'Role & Level', 'Location'];
   const missingMatchModeRequirements = [];
 
@@ -454,6 +490,14 @@ export default function Profile({ onProfileChange }) {
   if (!cvData.has_cv) {
     missingMatchModeRequirements.push('upload a CV');
   }
+
+  // Determine if each step is completed
+  const stepCompleted = {
+    1: !!industry,
+    2: skills.length > 0,
+    3: roles.length > 0 && !!experienceLevel,
+    4: !!location && !!jobType,
+  };
 
   return (
     <div className="profile-page">
@@ -575,10 +619,10 @@ export default function Profile({ onProfileChange }) {
           {[1, 2, 3, 4].map((n) => (
             <button
               key={n}
-              className={`wizard-step ${step === n ? 'active' : ''} ${step > n ? 'done' : ''}`}
+              className={`wizard-step ${step === n ? 'active' : ''} ${stepCompleted[n] ? 'done' : ''}`}
               onClick={() => setStep(n)}
             >
-              {step > n ? <CheckCircle size={16} /> : n}
+              {stepCompleted[n] ? <CheckCircle size={16} /> : n}
             </button>
           ))}
         </div>
@@ -594,9 +638,9 @@ export default function Profile({ onProfileChange }) {
         {step === 1 && (
           <div className="profile-step">
             <h3>What industry do you work in?</h3>
-            <p>Pick the one that best describes your field</p>
+            <p>Pick the one that best describes your field, or add your own below</p>
             <div className="industry-grid">
-              {INDUSTRIES.map(({ value, label }) => (
+              {industryOptions.map(({ value, label }) => (
                 <button
                   key={value}
                   type="button"
@@ -606,6 +650,46 @@ export default function Profile({ onProfileChange }) {
                   {label}
                 </button>
               ))}
+            </div>
+            <div className="custom-tech-row" style={{ marginTop: 16 }}>
+              <input
+                type="text"
+                className="profile-input"
+                placeholder="Can't find your industry? Type it here and press Enter"
+                value={customIndustryInput}
+                onChange={(e) => setCustomIndustryInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const value = customIndustryInput.trim();
+                    if (!value) return;
+                    const nextCustomIndustries = persistCustomIndustries([
+                      ...customIndustries,
+                      value,
+                    ]);
+                    setCustomIndustries(nextCustomIndustries);
+                    setCustomIndustryInput('');
+                    handleIndustryChange(value);
+                  }
+                }}
+              />
+              <button
+                type="button"
+                className="button"
+                onClick={() => {
+                  const value = customIndustryInput.trim();
+                  if (!value) return;
+                  const nextCustomIndustries = persistCustomIndustries([
+                    ...customIndustries,
+                    value,
+                  ]);
+                  setCustomIndustries(nextCustomIndustries);
+                  setCustomIndustryInput('');
+                  handleIndustryChange(value);
+                }}
+              >
+                Add
+              </button>
             </div>
           </div>
         )}
