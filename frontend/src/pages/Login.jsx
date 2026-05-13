@@ -8,12 +8,14 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError('');
+    setSuccess('');
 
     try {
       setIsLoading(true);
@@ -22,6 +24,7 @@ export default function Login() {
       localStorage.setItem('refreshToken', data.refresh_token);
       localStorage.setItem('userEmail', email);
       localStorage.setItem('username', data.username || '');
+      setSuccess('Login successful! Redirecting to dashboard...');
       setTimeout(() => navigate('/dashboard'), 800);
     } catch (err) {
       setError(err.message);
@@ -78,6 +81,7 @@ export default function Login() {
         </form>
 
         {error && <p className="alert alert-error">{error}</p>}
+        {success && <p className="alert alert-success">{success}</p>}
 
         <div className="auth-footer-links">
           <p className="auth-footer">
