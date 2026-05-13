@@ -10,8 +10,12 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 @router.post("/login")
 def login(credentials: UserLogin):
     user = users_collection.find_one({"email": credentials.email})
-    if not user or not verify_password(credentials.password, user["password"]):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    if not user:
+        raise HTTPException(status_code=401, detail="No account found with this email address")
+    
+    if not verify_password(credentials.password, user["password"]):
+        raise HTTPException(status_code=401, detail="Incorrect password")
 
     access_token = create_access_token({"email": credentials.email})
     refresh_token = create_refresh_token({"email": credentials.email})

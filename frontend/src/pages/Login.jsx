@@ -7,23 +7,26 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    setMessage('');
+    setError('');
 
     try {
+      setIsLoading(true);
       const data = await login({ email, password });
       localStorage.setItem('token', data.access_token);
       localStorage.setItem('refreshToken', data.refresh_token);
       localStorage.setItem('userEmail', email);
       localStorage.setItem('username', data.username || '');
-      setMessage('Login successful. Redirecting...');
       setTimeout(() => navigate('/dashboard'), 800);
     } catch (err) {
-      setMessage(err.message);
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -44,6 +47,7 @@ export default function Login() {
               type="email"
               placeholder="you@example.com"
               required
+              disabled={isLoading}
             />
           </label>
           <label>
@@ -54,24 +58,26 @@ export default function Login() {
                 onChange={(e) => setPassword(e.target.value)}
                 type={showPassword ? 'text' : 'password'}
                 required
+                disabled={isLoading}
               />
               <button
                 type="button"
                 className="password-toggle"
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
                 onClick={() => setShowPassword((v) => !v)}
+                disabled={isLoading}
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
           </label>
-          <button type="submit" className="button">
+          <button type="submit" className="button" disabled={isLoading}>
             <LogIn size={18} />
-            Login
+            {isLoading ? 'Logging in...' : 'Login'}
           </button>
         </form>
 
-        {message && <p className="alert">{message}</p>}
+        {error && <p className="alert alert-error">{error}</p>}
 
         <div className="auth-footer-links">
           <p className="auth-footer">

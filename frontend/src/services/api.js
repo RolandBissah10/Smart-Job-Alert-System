@@ -35,7 +35,8 @@ async function request(path, options = {}, isRetry = false) {
 
     const response = await fetch(`${BASE_URL}${path}`, { headers, ...options });
 
-    if (response.status === 401 && !isRetry) {
+    // Don't try to refresh token for login endpoint - 401 means invalid credentials
+    if (response.status === 401 && !isRetry && path !== '/auth/login') {
       try {
         const newToken = await refreshAccessToken();
         return request(path, {

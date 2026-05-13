@@ -45,7 +45,7 @@ def serialize_user(user):
 def signup(user: UserSignup):
     existing = users_collection.find_one({"email": user.email})
     if existing:
-        raise HTTPException(status_code=400, detail="User already exists")
+        raise HTTPException(status_code=409, detail="This email is already registered. Please log in or use a different email.")
 
     user_record = {
         "username": user.username.strip(),

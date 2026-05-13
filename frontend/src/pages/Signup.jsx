@@ -12,6 +12,7 @@ export default function Signup() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (event) => {
@@ -25,11 +26,14 @@ export default function Signup() {
     }
 
     try {
+      setIsLoading(true);
       await signup({ username, email, password });
       setSuccess('Account created! Redirecting to login...');
       setTimeout(() => navigate('/login'), 1200);
     } catch (err) {
       setError(err.message);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -50,6 +54,7 @@ export default function Signup() {
               type="text"
               placeholder="e.g. Roland"
               required
+              disabled={isLoading}
             />
           </label>
 
@@ -61,6 +66,7 @@ export default function Signup() {
               type="email"
               placeholder="you@example.com"
               required
+              disabled={isLoading}
             />
           </label>
 
@@ -72,12 +78,14 @@ export default function Signup() {
                 onChange={(e) => setPassword(e.target.value)}
                 type={showPassword ? 'text' : 'password'}
                 required
+                disabled={isLoading}
               />
               <button
                 type="button"
                 className="password-toggle"
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
                 onClick={() => setShowPassword((v) => !v)}
+                disabled={isLoading}
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
@@ -92,21 +100,23 @@ export default function Signup() {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 type={showConfirm ? 'text' : 'password'}
                 required
+                disabled={isLoading}
               />
               <button
                 type="button"
                 className="password-toggle"
                 aria-label={showConfirm ? 'Hide password' : 'Show password'}
                 onClick={() => setShowConfirm((v) => !v)}
+                disabled={isLoading}
               >
                 {showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
           </label>
 
-          <button type="submit" className="button">
+          <button type="submit" className="button" disabled={isLoading}>
             <UserPlus size={18} />
-            Create Account
+            {isLoading ? 'Creating Account...' : 'Create Account'}
           </button>
         </form>
 
