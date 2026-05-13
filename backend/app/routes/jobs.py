@@ -5,6 +5,7 @@ from app.services.notifier import send_email
 from app.services.job_filters import build_fresh_jobs_filter
 from app.db.database import alerts_collection, users_collection, jobs_collection
 from app.auth import verify_access_token
+from app.cache import cache
 from datetime import datetime
 
 router = APIRouter(prefix="/jobs", tags=["Jobs"])
@@ -49,13 +50,28 @@ def get_job_feed(
     if not profile_has_match_criteria(profile):
         return {"jobs": [], "total": 0, "page": page, "page_size": page_size, "profile_required": True}
 
-    # Show only jobs confirmed active in the last 7 days (last_seen_at refreshed each scrape)
-    # Fall back to last 30 days for sparse DBs or before first pipeline run with new tracking
-    fresh_filter = build_fresh_jobs_filter(7)
-    jobs = list(jobs_collection.find(fresh_filter).sort("created_at", -1).limit(500))
-    if len(jobs) < 10:
-        fresh_filter = build_fresh_jobs_filter(30)
+    profile_version = user.get("profile_version", 1)
+
+    # Cache key for job feed
+    cache_key = f"job_feed:{profile_version}:{page}:{page_size}"
+
+    # Try to get cached data
+    cached_data = cache.get(cache_key)
+    if cached_data:
+        return cached_data
+
+    # Cache fresh jobs for 10 minutes
+    jobs_cache_key = f"fresh_jobs:{profile_version}"
+    jobs = cache.get(jobs_cache_key)
+    if jobs is None:
+        # Show only jobs confirmed active in the last 7 days (last_seen_at refreshed each scrape)
+        # Fall back to last 30 days for sparse DBs or before first pipeline run with new tracking
+        fresh_filter = build_fresh_jobs_filter(7)
         jobs = list(jobs_collection.find(fresh_filter).sort("created_at", -1).limit(500))
+        if len(jobs) < 10:
+            fresh_filter = build_fresh_jobs_filter(30)
+            jobs = list(jobs_collection.find(fresh_filter).sort("created_at", -1).limit(500))
+        cache.set(jobs_cache_key, jobs, 600)  # 10 minutes
 
     # Score jobs; only return those with a positive match score (no random fallback)
     all_scored = score_jobs_for_user(jobs, profile)
@@ -64,7 +80,12 @@ def get_job_feed(
     skip = (page - 1) * page_size
     paginated = all_scored[skip: skip + page_size]
 
-    return {"jobs": paginated, "total": total, "page": page, "page_size": page_size, "profile_required": False}
+    result = {"jobs": paginated, "total": total, "page": page, "page_size": page_size, "profile_required": False}
+
+    # Cache the result for 5 minutes
+    cache.set(cache_key, result, 300)
+
+    return result
 
 
 @router.post("/run-pipeline")

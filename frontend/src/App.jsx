@@ -1,10 +1,21 @@
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
+import { lazy, Suspense } from 'react';
 import Navbar from './components/Navbar';
 import PrivateRoute from './components/PrivateRoute';
-import Home from './pages/Home';
-import Signup from './pages/Signup';
-import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
+
+// Lazy load components for better performance
+const Home = lazy(() => import('./pages/Home'));
+const Signup = lazy(() => import('./pages/Signup'));
+const Login = lazy(() => import('./pages/Login'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+
+function LoadingSpinner() {
+  return (
+    <div className="page-center">
+      <div className="loading-spinner">Loading...</div>
+    </div>
+  );
+}
 
 function AppLayout() {
   const location = useLocation();
@@ -14,19 +25,21 @@ function AppLayout() {
     <div className={isDashboard ? '' : 'app-shell'}>
       {!isDashboard && <Navbar />}
       <main className={isDashboard ? 'dashboard-main-wrapper' : ''}>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/login" element={<Login />} />
-          <Route
-            path="/dashboard"
-            element={
-              <PrivateRoute>
-                <Dashboard />
-              </PrivateRoute>
-            }
-          />
-        </Routes>
+        <Suspense fallback={<LoadingSpinner />}>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route path="/login" element={<Login />} />
+            <Route
+              path="/dashboard"
+              element={
+                <PrivateRoute>
+                  <Dashboard />
+                </PrivateRoute>
+              }
+            />
+          </Routes>
+        </Suspense>
       </main>
     </div>
   );

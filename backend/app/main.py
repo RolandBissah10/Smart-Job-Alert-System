@@ -1,4 +1,5 @@
 import traceback
+import time
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -8,6 +9,9 @@ from app.services.notifier import send_email
 from app.services.matcher import _get_keywords_from_profile, match_score
 from app.db.database import users_collection, jobs_collection, alerts_collection
 from app.config import EMAIL_USER, EMAIL_PASS, FRONTEND_URL, ALLOWED_ORIGINS
+from app.performance import get_performance_report
+
+app = FastAPI(title="Smart Job Alert System")
 
 app = FastAPI(title="Smart Job Alert System")
 
@@ -48,6 +52,18 @@ def shutdown_event():
 @app.get("/")
 def root():
     return {"message": "Smart Job Alert System is running"}
+
+
+@app.get("/health")
+def health_check():
+    """Health check endpoint"""
+    return {"status": "healthy", "timestamp": time.time()}
+
+
+@app.get("/performance")
+def performance_stats():
+    """Get performance statistics (for monitoring)"""
+    return get_performance_report()
 
 
 @app.post("/api/trigger-pipeline")
