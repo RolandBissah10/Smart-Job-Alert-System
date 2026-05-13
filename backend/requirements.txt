@@ -13,3 +13,4 @@ pydantic[email]
 python-multipart
 pypdf
 python-docx
+psutil

@@ -9,7 +9,7 @@ from app.services.notifier import send_email
 from app.services.matcher import _get_keywords_from_profile, match_score
 from app.db.database import users_collection, jobs_collection, alerts_collection
 from app.config import EMAIL_USER, EMAIL_PASS, FRONTEND_URL, ALLOWED_ORIGINS
-from app.performance import get_performance_report
+from app.performance import get_performance_report, perf_monitor
 
 app = FastAPI(title="Smart Job Alert System")
 
@@ -69,8 +69,11 @@ def performance_stats():
 @app.post("/api/trigger-pipeline")
 def trigger_pipeline():
     try:
+        start = time.perf_counter()
         run_job_pipeline()
-        return {"ok": True, "message": "Pipeline ran — check server terminal for logs"}
+        duration = round(time.perf_counter() - start, 2)
+        perf_monitor.record_pipeline_time(duration, source="manual")
+        return {"ok": True, "message": "Pipeline ran — check server terminal for logs", "duration_seconds": duration}
     except Exception as e:
         return JSONResponse(status_code=500, content={
             "ok": False,

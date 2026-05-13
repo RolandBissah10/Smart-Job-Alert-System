@@ -23,7 +23,11 @@ def _fetch_soup(url, params=None):
 
 
 def _clean_text(value):
-    return re.sub(r"\s+", " ", value or "").strip()
+    if isinstance(value, (list, tuple, set)):
+        value = " ".join(str(item) for item in value if item is not None)
+    elif isinstance(value, dict):
+        value = json.dumps(value, ensure_ascii=False)
+    return re.sub(r"\s+", " ", str(value or "")).strip()
 
 
 def _extract_json_ld_jobposting(soup):

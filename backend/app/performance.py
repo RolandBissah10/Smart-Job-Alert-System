@@ -52,6 +52,34 @@ class PerformanceMonitor:
 
         return stats
 
+    def record_pipeline_time(self, duration: float, source: str = "scheduler"):
+        """Record pipeline execution timing for scheduled or manual runs."""
+        key = f"perf:pipeline:{source}"
+        current = cache.get(key) or {
+            "count": 0,
+            "total_time": 0,
+            "avg_time": 0,
+            "last_run": 0,
+            "last_run_at": 0,
+        }
+
+        current["count"] += 1
+        current["total_time"] += duration
+        current["avg_time"] = current["total_time"] / current["count"]
+        current["last_run"] = duration
+        current["last_run_at"] = time.time()
+
+        cache.set(key, current, 3600)
+
+    def get_pipeline_stats(self) -> Dict[str, Any]:
+        stats = {}
+        for source in ["scheduler", "manual"]:
+            key = f"perf:pipeline:{source}"
+            data = cache.get(key)
+            if data:
+                stats[source] = data
+        return stats
+
 
 # Global performance monitor instance
 perf_monitor = PerformanceMonitor()
@@ -88,6 +116,7 @@ def get_performance_report() -> Dict[str, Any]:
     return {
         "system_stats": perf_monitor.get_system_stats(),
         "endpoint_stats": perf_monitor.get_endpoint_stats(),
+        "pipeline_stats": perf_monitor.get_pipeline_stats(),
         "cache_stats": {
             "cache_size": len(cache._cache) if hasattr(cache, '_cache') else 0
         },

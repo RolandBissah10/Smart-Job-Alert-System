@@ -38,8 +38,10 @@ A FastAPI-based job scraper and alert platform that detects matching jobs, track
 - **CDN**: Automatic CDN for static files
 
 ### Monitoring
-- **Performance Endpoint**: `/performance` for system metrics
+- **Performance Endpoint**: `/performance` for system metrics and pipeline runtime stats
 - **Health Check**: `/health` endpoint for uptime monitoring
+- **Manual Trigger**: `POST /jobs/run-pipeline` for on-demand scraping, matching, and email alerts
+- **API Trigger**: `POST /api/trigger-pipeline` also returns `duration_seconds`
 
 ## � Quick Start
 
@@ -201,10 +203,12 @@ Smart-Job-Alert-System/
 - `PUT /users/{email}` — Update a user
 - `DELETE /users/{email}` — Delete a user
 - `GET /jobs/scrape` — Run a single scrape and save new jobs
-- `POST /jobs/run-pipeline` — Run scraping, matching, and email delivery
+- `POST /jobs/run-pipeline` — Run scraping, matching, and email delivery (manual trigger)
+- `POST /api/trigger-pipeline` — Run the full pipeline from the API and return runtime
 - `POST /saved-jobs/` — Save a job (requires JWT)
 - `GET /saved-jobs/` — Get user's saved jobs (requires JWT)
 - `DELETE /saved-jobs/{job_id}` — Unsave a job (requires JWT)
+- Manual pipeline runtime should generally be reported in the API response as `duration_seconds`.
 
 ## 🔧 Next steps
 

@@ -1,3 +1,6 @@
+import time
+import logging
+
 from fastapi import APIRouter, HTTPException, Header, Query
 from app.services.scraper import fetch_jobs, save_jobs
 from app.services.matcher import get_matching_jobs_for_profile, score_jobs_for_user, profile_has_match_criteria
@@ -6,8 +9,10 @@ from app.services.job_filters import build_fresh_jobs_filter
 from app.db.database import alerts_collection, users_collection, jobs_collection
 from app.auth import verify_access_token
 from app.cache import cache
+from app.performance import perf_monitor
 from datetime import datetime
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/jobs", tags=["Jobs"])
 
 
@@ -90,6 +95,7 @@ def get_job_feed(
 
 @router.post("/run-pipeline")
 def run_pipeline():
+    start = time.perf_counter()
     jobs = fetch_jobs()
     new_jobs = save_jobs(jobs)
     active_users = list(users_collection.find({"is_active": True}))
@@ -146,9 +152,14 @@ def run_pipeline():
             })
             delivered.append({"email": user["email"], "job_url": job.get("url")})
 
+    duration_seconds = round(time.perf_counter() - start, 2)
+    logger.info(f"Manual pipeline completed in {duration_seconds}s")
+    perf_monitor.record_pipeline_time(duration_seconds, source="manual")
+
     return {
         "delivered": delivered,
         "matches": len(delivered),
         "new_jobs_fetched": len(new_jobs),
         "active_users_checked": len(active_users),
+        "duration_seconds": duration_seconds,
     }
