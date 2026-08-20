@@ -1,4 +1,8 @@
+import re
+
 from app.db.database import users_collection
+from app.services.profile_utils import get_profile_skills, build_match_profile
+from app.services.scoring import compute_match
 
 
 def normalize(text: str) -> str:
@@ -11,7 +15,7 @@ def get_match_source(profile: dict) -> str:
 
 
 def profile_has_match_criteria(profile: dict) -> bool:
-    has_profile = bool(profile.get("skills") or profile.get("tech_stack") or profile.get("roles"))
+    has_profile = bool(get_profile_skills(profile) or profile.get("roles"))
     has_cv = bool(profile.get("cv_keywords"))
     match_source = get_match_source(profile)
 
@@ -27,7 +31,7 @@ def _get_keywords_from_profile(profile: dict) -> list:
     match_source = get_match_source(profile)
 
     if match_source in {"profile", "both"}:
-        keywords.extend(profile.get("skills", []) or profile.get("tech_stack", []))
+        keywords.extend(get_profile_skills(profile))
         keywords.extend(profile.get("roles", []))
         industry = profile.get("industry", "")
         if industry:
@@ -41,7 +45,7 @@ def _get_keywords_from_profile(profile: dict) -> list:
 def _get_profile_skills(profile: dict) -> list:
     if get_match_source(profile) == "cv":
         return []
-    return profile.get("skills", []) or profile.get("tech_stack", [])
+    return get_profile_skills(profile)
 
 
 def _get_profile_roles(profile: dict) -> list:
@@ -101,6 +105,47 @@ def _match_job_type(job: dict, profile: dict) -> bool:
     return True
 
 
+_NO_SPONSORSHIP_PATTERNS = [
+    r"must be authorized to work",
+    r"authoriz(?:ed|ation) to work in",
+    r"no sponsorship",
+    r"not able to sponsor",
+    r"unable to sponsor",
+    r"citizens? only",
+    r"work permit required",
+    r"must have.{0,20}work permit",
+]
+
+_NEEDS_SPONSORSHIP_PATTERNS = [
+    r"need.{0,25}sponsorship",
+    r"require.{0,25}sponsorship",
+    r"need.{0,25}visa",
+    r"require.{0,25}visa",
+    r"need.{0,25}work permit",
+    r"require.{0,25}work permit",
+]
+
+
+def _job_requires_work_authorization(job: dict) -> bool:
+    text = normalize(job.get("description", "")) + " " + normalize(job.get("title", ""))
+    return any(re.search(pattern, text) for pattern in _NO_SPONSORSHIP_PATTERNS)
+
+
+def _candidate_needs_sponsorship(profile: dict) -> bool:
+    text = normalize(profile.get("work_authorization", ""))
+    return any(re.search(pattern, text) for pattern in _NEEDS_SPONSORSHIP_PATTERNS)
+
+
+def _match_work_authorization(job: dict, profile: dict) -> bool:
+    """Conservative by design: only excludes a job when there's an explicit
+    double signal (the job says no-sponsorship/citizens-only AND the candidate's
+    profile explicitly says they need sponsorship). Ambiguous or missing data on
+    either side always passes - we never auto-reject on an unclear requirement."""
+    if not _job_requires_work_authorization(job):
+        return True
+    return not _candidate_needs_sponsorship(profile)
+
+
 def _count_keyword_hits(text: str, keywords: list) -> list:
     hits = []
     for keyword in keywords:
@@ -111,7 +156,11 @@ def _count_keyword_hits(text: str, keywords: list) -> list:
 
 
 def _job_matches_profile(job: dict, profile: dict, title_hits: list, description_hits: list) -> bool:
-    if not _match_location(job, profile) or not _match_job_type(job, profile):
+    if (
+        not _match_location(job, profile)
+        or not _match_job_type(job, profile)
+        or not _match_work_authorization(job, profile)
+    ):
         return False
 
     title = normalize(job.get("title", ""))
@@ -222,7 +271,14 @@ def score_jobs_for_user(jobs, profile: dict):
     for match in get_matching_jobs_for_profile(jobs, profile):
         job = match["job"]
         job_data = {k: (str(v) if k == "_id" else v) for k, v in job.items()}
-        scored.append({"job": job_data, "score": match["score"], "reasons": match["reasons"]})
+        result = compute_match(job, profile)
+        scored.append({
+            "job": job_data,
+            "score": result["score"],
+            "reasons": result["reasons"] or match["reasons"],
+            "match_breakdown": result["components"],
+        })
+    scored.sort(key=lambda item: item["score"], reverse=True)
     return scored
 
 
@@ -230,9 +286,7 @@ def match_jobs_to_active_users(jobs):
     matches = []
     users = list(users_collection.find({"is_active": True}))
     for user in users:
-        profile = dict(user.get("profile", {}))
-        profile["match_source"] = user.get("match_source", "profile")
-        profile["cv_keywords"] = user.get("cv_data", {}).get("keywords", [])
+        profile = build_match_profile(user)
         if not profile_has_match_criteria(profile):
             continue
         for scored in get_matching_jobs_for_profile(jobs, profile):

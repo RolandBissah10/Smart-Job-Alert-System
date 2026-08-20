@@ -3,7 +3,8 @@ from app.models.user import UserSignup, UserUpdate, UserProfile
 from app.db.database import users_collection
 from app.auth_utils import hash_password
 from app.auth import verify_access_token
-from app.services.cv_parser import extract_text_from_cv, extract_cv_keywords
+from app.services.cv_parser import extract_text_from_cv, parse_cv
+from app.services.profile_utils import profile_has_structured_data
 from datetime import datetime
 
 router = APIRouter(prefix="/users", tags=["Users"])
@@ -34,6 +35,12 @@ def serialize_user(user):
             "has_cv": bool(cv_data.get("text")),
             "keyword_count": len(cv_data.get("keywords", [])),
             "preview": (cv_data.get("text", "")[:300] if cv_data.get("text") else ""),
+            "skills": cv_data.get("skills", []),
+            "certifications": cv_data.get("certifications", []),
+            "years_experience": cv_data.get("years_experience"),
+            "education": cv_data.get("education", []),
+            "job_titles": cv_data.get("job_titles", []),
+            "seniority": cv_data.get("seniority"),
         },
         "is_active": user.get("is_active", True),
         "plan": user.get("plan", "free"),
@@ -114,10 +121,11 @@ async def upload_cv(file: UploadFile = File(...), authorization: str = Header(No
     if not text:
         raise HTTPException(status_code=400, detail="Could not extract readable text from the CV")
 
-    keywords = extract_cv_keywords(text)
+    parsed = parse_cv(text)
+    keywords = parsed["keywords"]
     next_match_source = user.get("match_source", "profile")
     profile = user.get("profile", {})
-    has_profile = bool(profile.get("skills") or profile.get("tech_stack") or profile.get("roles"))
+    has_profile = profile_has_structured_data(profile)
     if next_match_source == "profile" and not has_profile:
         next_match_source = "cv"
     elif has_profile:
@@ -131,6 +139,12 @@ async def upload_cv(file: UploadFile = File(...), authorization: str = Header(No
                     "filename": file.filename,
                     "text": text,
                     "keywords": keywords,
+                    "skills": parsed["skills"],
+                    "certifications": parsed["certifications"],
+                    "years_experience": parsed["years_experience"],
+                    "education": parsed["education"],
+                    "job_titles": parsed["job_titles"],
+                    "seniority": parsed["seniority"],
                     "uploaded_at": datetime.utcnow(),
                 },
                 "match_source": next_match_source,
@@ -146,6 +160,12 @@ async def upload_cv(file: UploadFile = File(...), authorization: str = Header(No
             "has_cv": True,
             "keyword_count": len(keywords),
             "preview": text[:300],
+            "skills": parsed["skills"],
+            "certifications": parsed["certifications"],
+            "years_experience": parsed["years_experience"],
+            "education": parsed["education"],
+            "job_titles": parsed["job_titles"],
+            "seniority": parsed["seniority"],
         },
     }
 
@@ -158,7 +178,7 @@ def delete_cv(authorization: str = Header(None)):
         raise HTTPException(status_code=404, detail="User not found")
 
     profile = user.get("profile", {})
-    has_profile = bool(profile.get("skills") or profile.get("tech_stack") or profile.get("roles"))
+    has_profile = profile_has_structured_data(profile)
     next_match_source = "profile" if has_profile else "profile"
 
     users_collection.update_one(
@@ -186,7 +206,7 @@ def update_match_source(body: dict = Body(...), authorization: str = Header(None
         raise HTTPException(status_code=400, detail="match_source must be one of: profile, cv, both")
 
     profile = user.get("profile", {})
-    has_profile = bool(profile.get("skills") or profile.get("tech_stack") or profile.get("roles"))
+    has_profile = profile_has_structured_data(profile)
     has_cv = bool(user.get("cv_data", {}).get("text"))
 
     if match_source == "profile" and not has_profile:

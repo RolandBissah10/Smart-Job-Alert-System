@@ -596,6 +596,13 @@ input:focus, textarea:focus {
   border: 1px solid var(--border);
 }
 
+.job-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 .view-tabs {
   display: flex;
   gap: 8px;
@@ -1911,6 +1918,39 @@ select {
 .match-reasons {
   color: var(--text-light);
   font-weight: 500;
+}
+
+.match-breakdown {
+  flex-basis: 100%;
+  font-weight: 500;
+}
+
+.match-breakdown summary {
+  cursor: pointer;
+  color: var(--primary);
+}
+
+.match-breakdown[open] summary {
+  margin-bottom: 6px;
+}
+
+.match-dimension {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  padding: 2px 0;
+  text-transform: capitalize;
+}
+
+.match-dimension-label {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.match-dimension-note {
+  color: var(--text-light);
+  font-weight: 400;
 }
 
 /* ==================== ALERTS LIST ==================== */

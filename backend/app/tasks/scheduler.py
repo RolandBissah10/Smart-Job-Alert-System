@@ -8,19 +8,13 @@ from app.db.database import alerts_collection, jobs_collection, saved_jobs_colle
 from app.services.job_filters import build_fresh_jobs_filter
 from app.services.matcher import get_matching_jobs_for_profile, profile_has_match_criteria
 from app.services.notifier import send_email
+from app.services.profile_utils import build_match_profile
 from app.services.scraper import fetch_jobs, save_jobs
 from app.performance import perf_monitor
 
 logger = logging.getLogger(__name__)
 
 scheduler = BackgroundScheduler()
-
-
-def _build_match_profile(user: dict) -> dict:
-    profile = dict(user.get("profile", {}))
-    profile["match_source"] = user.get("match_source", "profile")
-    profile["cv_keywords"] = user.get("cv_data", {}).get("keywords", [])
-    return profile
 
 
 def _cleanup_stale_jobs():
@@ -64,7 +58,7 @@ def run_job_pipeline():
 
     total_sent = 0
     for user in users:
-        profile = _build_match_profile(user)
+        profile = build_match_profile(user)
         profile_version = user.get("profile_version", 1)
         if not profile_has_match_criteria(profile):
             logger.info(f"Skipping {user['email']} - no profile preferences set")

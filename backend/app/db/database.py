@@ -17,6 +17,10 @@ try:
     jobs_collection.create_index("url", unique=True, sparse=True)
     jobs_collection.create_index([("created_at", DESCENDING)])
     jobs_collection.create_index([("last_seen_at", DESCENDING)])
+    jobs_collection.create_index([("posted_date", DESCENDING)])
+    # TTL must stay on created_at (discovery time), not posted_date: a TTL index
+    # silently skips documents missing the indexed field, and not every job has
+    # a real posted_date, which would quietly break cleanup for those jobs.
     jobs_collection.create_index("created_at", expireAfterSeconds=15 * 24 * 60 * 60)
     try:
         alerts_collection.drop_index("user_id_1_job_id_1")

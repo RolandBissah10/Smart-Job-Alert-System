@@ -42,14 +42,19 @@ export default function JobCard({ job, isSaved = false, onSaveToggle }) {
           <h3>{job.title}</h3>
           <p className="job-company">{job.company}</p>
         </div>
-        {job.source && <span className="tag">{job.source}</span>}
+        <div className="job-card-tags">
+          {job.source && <span className="tag">{job.source}</span>}
+          {job.employment_type && <span className="tag">{job.employment_type}</span>}
+          {job.seniority && <span className="tag">{job.seniority}</span>}
+        </div>
       </div>
       <div className="job-meta-row">
         {job.location && <p className="job-meta">Location: {job.location}</p>}
-        {job.created_at && (
+        {(job.posted_date || job.created_at) && (
           <p className="job-meta job-freshness">
             <Clock size={12} />
-            {timeAgo(job.created_at)}
+            {timeAgo(job.posted_date || job.created_at)}
+            {job.date_is_estimated && ' (est.)'}
           </p>
         )}
       </div>

@@ -87,13 +87,28 @@ export default function Jobs({ onNavigate, refreshKey }) {
       ) : (
         <>
           <div className="jobs-grid">
-            {jobs.map(({ job, score, reasons }, i) => (
+            {jobs.map(({ job, score, reasons, match_breakdown }, i) => (
               <div key={job._id || i} className="job-card-wrapper">
                 {score > 0 && (
                   <div className="match-info">
                     <span className="match-score">Score: {score}</span>
                     {reasons?.length > 0 && (
                       <span className="match-reasons">Matches: {reasons.join(', ')}</span>
+                    )}
+                    {match_breakdown && (
+                      <details className="match-breakdown">
+                        <summary>Why this match?</summary>
+                        {Object.entries(match_breakdown).map(([dimension, info]) => (
+                          <div key={dimension} className="match-dimension">
+                            <span className="match-dimension-label">
+                              {dimension}: {info.score}/100
+                            </span>
+                            {info.explanation && (
+                              <span className="match-dimension-note">{info.explanation}</span>
+                            )}
+                          </div>
+                        ))}
+                      </details>
                     )}
                   </div>
                 )}

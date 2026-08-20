@@ -6,6 +6,7 @@ from app.services.scraper import fetch_jobs, save_jobs
 from app.services.matcher import get_matching_jobs_for_profile, score_jobs_for_user, profile_has_match_criteria
 from app.services.notifier import send_email
 from app.services.job_filters import build_fresh_jobs_filter
+from app.services.profile_utils import build_match_profile
 from app.db.database import alerts_collection, users_collection, jobs_collection
 from app.auth import verify_access_token
 from app.cache import cache
@@ -14,13 +15,6 @@ from datetime import datetime
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/jobs", tags=["Jobs"])
-
-
-def _build_match_profile(user: dict) -> dict:
-    profile = dict(user.get("profile", {}))
-    profile["match_source"] = user.get("match_source", "profile")
-    profile["cv_keywords"] = user.get("cv_data", {}).get("keywords", [])
-    return profile
 
 
 def _require_auth(authorization: str):
@@ -51,7 +45,7 @@ def get_job_feed(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    profile = _build_match_profile(user)
+    profile = build_match_profile(user)
     if not profile_has_match_criteria(profile):
         return {"jobs": [], "total": 0, "page": page, "page_size": page_size, "profile_required": True}
 
@@ -102,7 +96,7 @@ def run_pipeline():
 
     delivered = []
     for user in active_users:
-        profile = _build_match_profile(user)
+        profile = build_match_profile(user)
         profile_version = user.get("profile_version", 1)
         match_source = user.get("match_source", "profile")
         if not profile_has_match_criteria(profile):

@@ -224,6 +224,14 @@ export default function Profile({ onProfileChange }) {
   const [expandedCategories, setExpandedCategories] = useState(new Set());
   const [roles, setRoles] = useState([]);
   const [experienceLevel, setExperienceLevel] = useState('');
+  const [yearsExperience, setYearsExperience] = useState('');
+  const [education, setEducation] = useState([]);
+  const [certifications, setCertifications] = useState([]);
+  const [customCertInput, setCustomCertInput] = useState('');
+  const [projects, setProjects] = useState([]);
+  const [customProjectInput, setCustomProjectInput] = useState('');
+  const [salaryExpectation, setSalaryExpectation] = useState('');
+  const [workAuthorization, setWorkAuthorization] = useState('');
   const [location, setLocation] = useState('Remote');
   const [jobType, setJobType] = useState('Full-time');
   const [saving, setSaving] = useState(false);
@@ -270,6 +278,12 @@ export default function Profile({ onProfileChange }) {
         setSkills(backendSkills);
         setRoles(backendRoles);
         setExperienceLevel(p.experience_level || '');
+        setYearsExperience(p.years_experience != null ? String(p.years_experience) : '');
+        setEducation(p.education || []);
+        setCertifications(p.certifications || []);
+        setProjects(p.projects || []);
+        setSalaryExpectation(p.salary_expectation || '');
+        setWorkAuthorization(p.work_authorization || '');
         setLocation(p.location || 'Remote');
         setJobType(p.job_type || 'Full-time');
         setMatchSource(data.match_source || 'profile');
@@ -396,11 +410,51 @@ export default function Profile({ onProfileChange }) {
     localStorage.setItem('customRoles', JSON.stringify(customs));
   };
 
+  const addEducationEntry = () => {
+    setEducation((prev) => [...prev, { degree: '', field: '', institution: '', source: 'profile' }]);
+  };
+
+  const updateEducationEntry = (index, key, value) => {
+    setEducation((prev) => prev.map((entry, i) => (i === index ? { ...entry, [key]: value } : entry)));
+  };
+
+  const removeEducationEntry = (index) => {
+    setEducation((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const addCustomCert = () => {
+    const value = customCertInput.trim();
+    if (!value || certifications.includes(value)) return;
+    setCertifications((prev) => [...prev, value]);
+    setCustomCertInput('');
+  };
+
+  const removeCert = (cert) => {
+    setCertifications((prev) => prev.filter((c) => c !== cert));
+  };
+
+  const addCustomProject = () => {
+    const value = customProjectInput.trim();
+    if (!value || projects.includes(value)) return;
+    setProjects((prev) => [...prev, value]);
+    setCustomProjectInput('');
+  };
+
+  const removeProject = (project) => {
+    setProjects((prev) => prev.filter((p) => p !== project));
+  };
+
   const buildProfilePayload = () => ({
     industry: industry || null,
     skills,
     roles,
     experience_level: experienceLevel || null,
+    years_experience: yearsExperience !== '' ? Number(yearsExperience) : null,
+    education: education.filter((entry) => entry.degree || entry.field || entry.institution),
+    certifications,
+    projects,
+    salary_expectation: salaryExpectation || null,
+    work_authorization: workAuthorization || null,
     location,
     job_type: jobType,
   });
@@ -454,6 +508,12 @@ export default function Profile({ onProfileChange }) {
       setSkills([]);
       setRoles([]);
       setExperienceLevel('');
+      setYearsExperience('');
+      setEducation([]);
+      setCertifications([]);
+      setProjects([]);
+      setSalaryExpectation('');
+      setWorkAuthorization('');
       setLocation('Remote');
       setJobType('Full-time');
       setExpandedCategories(new Set());
@@ -481,7 +541,7 @@ export default function Profile({ onProfileChange }) {
       .filter((value) => !INDUSTRIES.some((item) => item.value === value))
       .map((value) => ({ value, label: value })),
   ];
-  const stepTitles = ['Industry', 'Skills', 'Role & Level', 'Location'];
+  const stepTitles = ['Industry', 'Skills', 'Role & Level', 'Background', 'Location'];
   const missingMatchModeRequirements = [];
 
   if (!hasProfileData) {
@@ -496,7 +556,8 @@ export default function Profile({ onProfileChange }) {
     1: !!industry,
     2: skills.length > 0,
     3: roles.length > 0 && !!experienceLevel,
-    4: !!location && !!jobType,
+    4: true, // background details are all optional
+    5: !!location && !!jobType,
   };
 
   return (
@@ -616,7 +677,7 @@ export default function Profile({ onProfileChange }) {
         </div>
 
         <div className="wizard-steps">
-          {[1, 2, 3, 4].map((n) => (
+          {[1, 2, 3, 4, 5].map((n) => (
             <button
               key={n}
               className={`wizard-step ${step === n ? 'active' : ''} ${stepCompleted[n] ? 'done' : ''}`}
@@ -850,8 +911,141 @@ export default function Profile({ onProfileChange }) {
           </div>
         )}
 
-        {/* Step 4 — Location & Job Type */}
+        {/* Step 4 — Background details (all optional) */}
         {step === 4 && (
+          <div className="profile-step">
+            <h3>Tell us more about your background</h3>
+            <p>All optional — the more you share, the better we can explain why a job matches you</p>
+
+            <div className="profile-section">
+              <label className="profile-label">Years of Experience</label>
+              <input
+                type="number"
+                min="0"
+                step="0.5"
+                className="profile-input"
+                placeholder="e.g. 3"
+                value={yearsExperience}
+                onChange={(e) => setYearsExperience(e.target.value)}
+              />
+            </div>
+
+            <div className="profile-section">
+              <label className="profile-label">Education</label>
+              {education.map((entry, index) => (
+                <div key={index} className="custom-tech-row" style={{ marginBottom: 8 }}>
+                  <input
+                    type="text"
+                    className="profile-input"
+                    placeholder="Degree (e.g. BSc)"
+                    value={entry.degree || ''}
+                    onChange={(e) => updateEducationEntry(index, 'degree', e.target.value)}
+                  />
+                  <input
+                    type="text"
+                    className="profile-input"
+                    placeholder="Field (e.g. Computer Science)"
+                    value={entry.field || ''}
+                    onChange={(e) => updateEducationEntry(index, 'field', e.target.value)}
+                  />
+                  <input
+                    type="text"
+                    className="profile-input"
+                    placeholder="Institution"
+                    value={entry.institution || ''}
+                    onChange={(e) => updateEducationEntry(index, 'institution', e.target.value)}
+                  />
+                  <button type="button" className="button button-danger" onClick={() => removeEducationEntry(index)}>
+                    Remove
+                  </button>
+                </div>
+              ))}
+              <button type="button" className="button" onClick={addEducationEntry}>
+                + Add Education
+              </button>
+            </div>
+
+            <div className="profile-section">
+              <label className="profile-label">Certifications</label>
+              <div className="chip-grid">
+                {certifications.map((cert) => (
+                  <button key={cert} type="button" className="chip selected chip-custom" onClick={() => removeCert(cert)}>
+                    {cert} &times;
+                  </button>
+                ))}
+              </div>
+              <div className="custom-tech-row">
+                <input
+                  type="text"
+                  className="profile-input"
+                  placeholder="e.g. PMP, AWS Certified Solutions Architect - press Enter"
+                  value={customCertInput}
+                  onChange={(e) => setCustomCertInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') { e.preventDefault(); addCustomCert(); }
+                  }}
+                />
+                <button type="button" className="button" onClick={addCustomCert}>
+                  Add
+                </button>
+              </div>
+            </div>
+
+            <div className="profile-section">
+              <label className="profile-label">Projects</label>
+              <div className="chip-grid">
+                {projects.map((project) => (
+                  <button key={project} type="button" className="chip selected chip-custom" onClick={() => removeProject(project)}>
+                    {project} &times;
+                  </button>
+                ))}
+              </div>
+              <div className="custom-tech-row">
+                <input
+                  type="text"
+                  className="profile-input"
+                  placeholder="Briefly name a project - press Enter"
+                  value={customProjectInput}
+                  onChange={(e) => setCustomProjectInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') { e.preventDefault(); addCustomProject(); }
+                  }}
+                />
+                <button type="button" className="button" onClick={addCustomProject}>
+                  Add
+                </button>
+              </div>
+            </div>
+
+            <div className="profile-section">
+              <label className="profile-label">Salary Expectation</label>
+              <input
+                type="text"
+                className="profile-input"
+                placeholder="e.g. 50,000 - 70,000 GHS per year"
+                value={salaryExpectation}
+                onChange={(e) => setSalaryExpectation(e.target.value)}
+              />
+            </div>
+
+            <div className="profile-section">
+              <label className="profile-label">Work Authorization</label>
+              <input
+                type="text"
+                className="profile-input"
+                placeholder="e.g. Ghanaian citizen, no sponsorship needed / I need visa sponsorship"
+                value={workAuthorization}
+                onChange={(e) => setWorkAuthorization(e.target.value)}
+              />
+              <p className="profile-panel-text" style={{ marginTop: 4 }}>
+                Only used to avoid jobs that explicitly require sponsorship you don&apos;t have - we never guess.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Step 5 — Location & Job Type */}
+        {step === 5 && (
           <div>
             <h3>Where do you want to work?</h3>
             <div className="profile-section">
@@ -894,7 +1088,7 @@ export default function Profile({ onProfileChange }) {
           <ChevronLeft size={18} /> Back
         </button>
 
-        {step < 4 ? (
+        {step < 5 ? (
           <button className="button" onClick={() => setStep((s) => s + 1)}>
             Next <ChevronRight size={18} />
           </button>

@@ -6,7 +6,10 @@ from bs4 import BeautifulSoup
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from app.db.database import jobs_collection
 from app.config import ADZUNA_APP_ID, ADZUNA_APP_KEY
+from app.services.skills_taxonomy import extract_skills_from_text
+from app.services.seniority import classify_seniority_from_title
 from datetime import datetime
+from email.utils import parsedate_to_datetime
 from urllib.parse import urljoin
 import logging
 
@@ -20,6 +23,40 @@ def _fetch_soup(url, params=None):
     response = requests.get(url, params=params, headers=HEADERS, timeout=TIMEOUT)
     response.raise_for_status()
     return BeautifulSoup(response.text, "html.parser")
+
+
+def _parse_date_safe(value):
+    """Best-effort conversion of a source's raw date value (epoch number, ISO8601
+    string, or RFC-822 string) into a naive UTC datetime. Returns None rather than
+    raising - callers must treat a missing posted_date as legitimate, not an error."""
+    if value is None or value == "":
+        return None
+    if isinstance(value, (int, float)):
+        try:
+            return datetime.utcfromtimestamp(value)
+        except (OverflowError, OSError, ValueError):
+            return None
+    if isinstance(value, str):
+        text = value.strip()
+        try:
+            return datetime.fromisoformat(text.replace("Z", "+00:00")).replace(tzinfo=None)
+        except ValueError:
+            pass
+        try:
+            return parsedate_to_datetime(text).replace(tzinfo=None)
+        except (TypeError, ValueError):
+            return None
+    return None
+
+
+def enrich_job(job: dict) -> dict:
+    """Rule-based enrichment applied once per newly-discovered job: a skills list
+    (against the shared taxonomy) and an inferred seniority level, both derived
+    from title/description text already collected by the fetchers."""
+    text = f"{job.get('title', '')} {job.get('description', '')}"
+    job["skills"] = extract_skills_from_text(text)
+    job["seniority"] = classify_seniority_from_title(job.get("title", ""), job.get("description", ""))
+    return job
 
 
 def _clean_text(value):
@@ -64,7 +101,8 @@ def _extract_json_ld_jobposting(soup):
                     "company": _clean_text(hiring_org.get("name") if isinstance(hiring_org, dict) else hiring_org),
                     "location": _clean_text(locality),
                     "description": _clean_text(BeautifulSoup(item.get("description", ""), "html.parser").get_text())[:500],
-                    "employment_type": _clean_text(item.get("employmentType")),
+                    "employment_type": _clean_text(item.get("employmentType")) or None,
+                    "posted_date": _parse_date_safe(item.get("datePosted")),
                 }
     return {}
 
@@ -118,6 +156,7 @@ def _parse_generic_detail(url, source, fallback_location="", fallback_company=""
     if not title:
         return None
 
+    posted_date = json_ld.get("posted_date")
     return {
         "title": title,
         "company": company,
@@ -125,6 +164,9 @@ def _parse_generic_detail(url, source, fallback_location="", fallback_company=""
         "url": url,
         "source": source,
         "description": description,
+        "employment_type": json_ld.get("employment_type"),
+        "posted_date": posted_date,
+        "date_is_estimated": posted_date is None,
     }
 
 
@@ -146,25 +188,26 @@ def _collect_links(soup, base_url, href_predicate, limit=25):
 
 
 def _fetch_remoteok():
+    # Uses RemoteOK's JSON API (not the HTML jobs table) specifically so we get a
+    # real `date`/`epoch` posted timestamp - the HTML page has no reliable one.
     jobs = []
     try:
-        r = requests.get("https://remoteok.com/remote-dev-jobs", headers=HEADERS, timeout=TIMEOUT)
+        r = requests.get("https://remoteok.com/api", headers=HEADERS, timeout=TIMEOUT)
         r.raise_for_status()
-        soup = BeautifulSoup(r.text, "html.parser")
-        for row in soup.select("tr.job"):
-            title_el = row.select_one("h2")
-            company_el = row.select_one("h3")
-            url_el = row.select_one("a.preventLink")
-            if not title_el or not company_el:
-                continue
-            job_url = f"https://remoteok.com{url_el['href']}" if url_el and url_el.get("href") else None
+        items = r.json()
+        for item in items:
+            if not isinstance(item, dict) or not item.get("id"):
+                continue  # first element is an API legal-notice object, not a job
+            posted_date = _parse_date_safe(item.get("date")) or _parse_date_safe(item.get("epoch"))
             jobs.append({
-                "title": title_el.text.strip(),
-                "company": company_el.text.strip(),
-                "location": row.select_one(".location").text.strip() if row.select_one(".location") else "Remote",
-                "url": job_url,
+                "title": item.get("position", ""),
+                "company": item.get("company", ""),
+                "location": item.get("location") or "Remote",
+                "url": item.get("url") or item.get("apply_url"),
                 "source": "remoteok",
-                "description": row.select_one(".description").text.strip() if row.select_one(".description") else "",
+                "description": BeautifulSoup(item.get("description", ""), "html.parser").get_text()[:500],
+                "posted_date": posted_date,
+                "date_is_estimated": posted_date is None,
             })
         logger.info(f"RemoteOK: {len(jobs)} jobs")
     except Exception as e:
@@ -178,6 +221,7 @@ def _fetch_remotive():
         r = requests.get("https://remotive.com/api/remote-jobs", headers=HEADERS, timeout=TIMEOUT)
         r.raise_for_status()
         for item in r.json().get("jobs", []):
+            posted_date = _parse_date_safe(item.get("publication_date"))
             jobs.append({
                 "title": item.get("title", ""),
                 "company": item.get("company_name", ""),
@@ -185,6 +229,9 @@ def _fetch_remotive():
                 "url": item.get("url"),
                 "source": "remotive",
                 "description": BeautifulSoup(item.get("description", ""), "html.parser").get_text()[:500],
+                "employment_type": item.get("job_type") or None,
+                "posted_date": posted_date,
+                "date_is_estimated": posted_date is None,
             })
         logger.info(f"Remotive: {len(jobs)} jobs")
     except Exception as e:
@@ -199,6 +246,8 @@ def _fetch_arbeitnow():
         r = requests.get("https://arbeitnow.com/api/job-board-api", headers=HEADERS, timeout=TIMEOUT)
         r.raise_for_status()
         for item in r.json().get("data", []):
+            posted_date = _parse_date_safe(item.get("created_at"))
+            job_types = item.get("job_types") or []
             jobs.append({
                 "title": item.get("title", ""),
                 "company": item.get("company_name", ""),
@@ -206,6 +255,9 @@ def _fetch_arbeitnow():
                 "url": item.get("url"),
                 "source": "arbeitnow",
                 "description": BeautifulSoup(item.get("description", ""), "html.parser").get_text()[:500],
+                "employment_type": job_types[0] if job_types else None,
+                "posted_date": posted_date,
+                "date_is_estimated": posted_date is None,
             })
         logger.info(f"Arbeitnow: {len(jobs)} jobs")
     except Exception as e:
@@ -219,15 +271,21 @@ def _fetch_himalayas():
         r = requests.get("https://himalayas.app/jobs/api", headers=HEADERS, timeout=TIMEOUT)
         r.raise_for_status()
         for item in r.json().get("jobs", []):
-            company = item.get("company", {})
+            # NOTE: fixed here alongside the posted_date addition - the API has no
+            # "company"/"url" fields (only "companyName" and "applicationLink"/"guid"),
+            # so every Himalayas job was previously being dropped for lacking a URL.
             locations = item.get("locationRestrictions") or []
+            posted_date = _parse_date_safe(item.get("pubDate"))
             jobs.append({
                 "title": item.get("title", ""),
-                "company": company.get("name", "") if isinstance(company, dict) else str(company),
+                "company": item.get("companyName", ""),
                 "location": ", ".join(locations) if locations else "Remote",
-                "url": item.get("url"),
+                "url": item.get("applicationLink") or item.get("guid"),
                 "source": "himalayas",
                 "description": BeautifulSoup(item.get("description", ""), "html.parser").get_text()[:500],
+                "employment_type": item.get("employmentType") or None,
+                "posted_date": posted_date,
+                "date_is_estimated": posted_date is None,
             })
         logger.info(f"Himalayas: {len(jobs)} jobs")
     except Exception as e:
@@ -248,6 +306,7 @@ def _fetch_themuse():
         for item in r.json().get("results", []):
             locations = item.get("locations", [])
             location = locations[0].get("name", "Remote") if locations else "Remote"
+            posted_date = _parse_date_safe(item.get("publication_date"))
             jobs.append({
                 "title": item.get("name", ""),
                 "company": item.get("company", {}).get("name", ""),
@@ -255,6 +314,8 @@ def _fetch_themuse():
                 "url": item.get("refs", {}).get("landing_page"),
                 "source": "themuse",
                 "description": BeautifulSoup(item.get("contents", ""), "html.parser").get_text()[:500],
+                "posted_date": posted_date,
+                "date_is_estimated": posted_date is None,
             })
         logger.info(f"The Muse: {len(jobs)} jobs")
     except Exception as e:
@@ -278,6 +339,7 @@ def _fetch_jobicy():
             location = location_el.text.strip() if location_el is not None and location_el.text else "Remote"
             if not link:
                 continue
+            posted_date = _parse_date_safe(item.findtext("pubDate"))
             jobs.append({
                 "title": title,
                 "company": company,
@@ -285,6 +347,8 @@ def _fetch_jobicy():
                 "url": link,
                 "source": "jobicy",
                 "description": BeautifulSoup(item.findtext("description", ""), "html.parser").get_text()[:500],
+                "posted_date": posted_date,
+                "date_is_estimated": posted_date is None,
             })
         logger.info(f"Jobicy: {len(jobs)} jobs")
     except Exception as e:
@@ -350,6 +414,9 @@ def _fetch_glmis_ghana():
                 "url": detail_link or "https://www.glmis.gov.gh/Jobs/Joblistings",
                 "source": "glmis_ghana",
                 "description": description,
+                # No structured posting date is available on this listing page.
+                "posted_date": None,
+                "date_is_estimated": True,
             })
             if len(jobs) >= 25:
                 break
@@ -416,6 +483,9 @@ def _fetch_arc_ghana():
                 "url": url,
                 "source": "arc_ghana",
                 "description": text[:500],
+                # No structured posting date is available on this listing page.
+                "posted_date": None,
+                "date_is_estimated": True,
             })
             if len(jobs) >= 20:
                 break
@@ -470,6 +540,7 @@ def _fetch_adzuna():
                 break
             r.raise_for_status()
             for item in r.json().get("results", []):
+                posted_date = _parse_date_safe(item.get("created"))
                 jobs.append({
                     "title": item.get("title", ""),
                     "company": item.get("company", {}).get("display_name", ""),
@@ -477,6 +548,9 @@ def _fetch_adzuna():
                     "url": item.get("redirect_url"),
                     "source": "adzuna",
                     "description": item.get("description", "")[:500],
+                    "employment_type": item.get("contract_time") or item.get("contract_type") or None,
+                    "posted_date": posted_date,
+                    "date_is_estimated": posted_date is None,
                 })
             time.sleep(1)
         except Exception as e:
@@ -538,6 +612,7 @@ def save_jobs(jobs):
         for job in new_jobs:
             job["created_at"] = now
             job["last_seen_at"] = now
+            enrich_job(job)
         try:
             jobs_collection.insert_many(new_jobs, ordered=False)
         except Exception as e:

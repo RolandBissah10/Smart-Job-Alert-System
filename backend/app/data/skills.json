@@ -1,0 +1,77 @@
+{
+  "skills": [
+    "Python", "JavaScript", "TypeScript", "Java", "Go", "Rust", "C#", "C++", "PHP", "Ruby", "Swift", "Kotlin", "Scala", "Dart", "R",
+    "React", "Vue", "Angular", "Next.js", "Tailwind CSS",
+    "Django", "FastAPI", "Flask", "Node.js", "Express.js", "NestJS", "Spring Boot", "Laravel", "Ruby on Rails", "ASP.NET",
+    "Docker", "Kubernetes", "AWS", "Azure", "GCP", "Terraform", "Jenkins", "CI/CD", "Linux", "Nginx",
+    "PostgreSQL", "MongoDB", "Redis", "MySQL", "SQLite", "Kafka",
+    "Flutter", "React Native", "iOS", "Android",
+    "Selenium", "Playwright", "Cypress", "PyTest", "JUnit", "REST Assured", "Postman", "JIRA",
+    "Kali Linux", "Penetration Testing", "Wireshark", "Burp Suite", "Network Security", "OSINT", "Metasploit", "Splunk",
+    "Machine Learning", "Deep Learning", "TensorFlow", "PyTorch", "SQL", "Tableau", "Power BI", "scikit-learn",
+
+    "Patient Care", "Clinical Assessment", "Diagnosis", "Treatment Planning", "Telemedicine", "CPR", "Wound Care",
+    "Nursing", "Surgery", "Radiology", "Pharmacy", "Physical Therapy", "Occupational Therapy", "Mental Health", "Pediatrics", "Oncology",
+    "EHR Systems", "Epic", "Cerner", "HIPAA Compliance", "HL7", "FHIR", "Medical Coding",
+    "Clinical Research", "Biostatistics", "Laboratory Testing", "Medical Writing", "IRB Protocols",
+
+    "GAAP", "IFRS", "Financial Reporting", "Tax Preparation", "Auditing", "Bookkeeping", "QuickBooks", "SAP",
+    "Financial Analysis", "Financial Modeling", "Valuation", "Budgeting", "Forecasting", "Investment Analysis", "Risk Management", "M&A",
+    "Commercial Banking", "Retail Banking", "Credit Analysis", "Loan Processing", "AML", "KYC", "Basel III",
+    "Excel", "Bloomberg", "VBA",
+
+    "SEO", "SEM", "Google Ads", "Facebook Ads", "Email Marketing", "Content Marketing", "Affiliate Marketing",
+    "Social Media Management", "Instagram", "LinkedIn", "TikTok", "YouTube", "X (Twitter)",
+    "Google Analytics", "HubSpot", "Salesforce", "CRM", "A/B Testing", "Data Analysis", "Hotjar",
+    "B2B Sales", "B2C Sales", "Sales Strategy", "Lead Generation", "Account Management", "Cold Calling", "Negotiation",
+    "Brand Strategy", "Copywriting", "Content Creation", "PR", "Influencer Marketing", "Market Research",
+
+    "Curriculum Development", "Lesson Planning", "Classroom Management", "E-Learning", "LMS", "Differentiated Instruction",
+    "Early Childhood Education", "K-12", "Higher Education", "Adult Education", "Corporate Training", "Special Education",
+    "STEM", "Mathematics", "Instructional Design", "Moodle", "Canvas", "Zoom", "Google Classroom", "Articulate 360",
+
+    "Corporate Law", "Criminal Law", "Family Law", "Immigration Law", "Intellectual Property", "Real Estate Law", "Labor Law", "Tax Law", "Litigation",
+    "Legal Research", "Contract Drafting", "Compliance", "Legal Writing", "Due Diligence", "eDiscovery",
+    "Westlaw", "LexisNexis", "PACER", "Clio", "DocuSign", "Relativity",
+
+    "Figma", "Adobe XD", "Sketch", "Prototyping", "Wireframing", "User Research", "Usability Testing", "Design Systems",
+    "Adobe Photoshop", "Illustrator", "InDesign", "After Effects", "Branding", "Typography", "Print Design",
+    "Video Editing", "Motion Graphics", "Premiere Pro", "Final Cut Pro", "Animation", "3D Modeling", "Blender",
+    "Photography", "Interior Design", "Fashion Design", "Product Design", "Packaging Design",
+
+    "AutoCAD", "SolidWorks", "CATIA", "FEA", "CFD", "Thermodynamics", "Manufacturing", "GD&T",
+    "Structural Analysis", "AutoCAD Civil 3D", "Revit", "Construction Management", "BIM", "Geotechnical",
+    "PCB Design", "Embedded Systems", "MATLAB", "PLC Programming", "Circuit Design", "Power Systems", "VHDL",
+    "Process Engineering", "Aspen Plus", "Quality Control", "HSE", "Piping Design",
+
+    "Talent Acquisition", "Sourcing", "Interviewing", "Employer Branding", "ATS", "LinkedIn Recruiter", "Job Posting",
+    "Onboarding", "Employee Relations", "Performance Management", "HR Policies", "Payroll", "Benefits Administration", "HRIS",
+    "Training & Development", "Learning Management", "Leadership Development", "Coaching", "Succession Planning",
+    "SAP SuccessFactors", "Workday", "BambooHR", "ADP", "Greenhouse", "Lever",
+
+    "Supply Chain Management", "Logistics", "Procurement", "Inventory Management", "ERP", "Vendor Management",
+    "Agile", "Scrum", "Kanban", "Jira", "Asana", "Stakeholder Management",
+    "Six Sigma", "Lean", "ISO Standards", "Quality Assurance", "Process Improvement", "Kaizen",
+
+    "Quantitative Research", "Qualitative Research", "Statistical Analysis", "Survey Design", "Data Collection", "Meta-Analysis",
+    "SPSS", "STATA", "NVivo", "SAS",
+    "Biology", "Chemistry", "Physics", "Social Sciences", "Economics", "Environmental Science", "Neuroscience",
+
+    "Customer Support", "Conflict Resolution", "Communication", "Zendesk", "Live Chat", "Ticketing Systems",
+    "Phone Support", "Email Support", "Social Media Support", "Chat Support", "Technical Support"
+  ],
+  "certifications": [
+    "CPA", "CFA", "CMA", "FRM", "CFP", "ACCA", "CIA",
+    "PMP", "PRINCE2", "Certified ScrumMaster", "CSM", "ITIL",
+    "AWS Certified Solutions Architect", "AWS Certified Developer", "AWS Certified SysOps Administrator",
+    "Microsoft Certified: Azure Administrator", "Microsoft Certified: Azure Solutions Architect",
+    "Google Cloud Professional Cloud Architect", "Google Cloud Professional Data Engineer",
+    "CISSP", "CISM", "CISA", "Certified Ethical Hacker", "CEH", "CompTIA A+", "CompTIA Security+", "CCNA", "CCNP",
+    "Red Hat Certified Engineer", "RHCE",
+    "Six Sigma Green Belt", "Six Sigma Black Belt", "ISO 9001 Lead Auditor",
+    "SHRM-CP", "SHRM-SCP", "PHR", "SPHR",
+    "Series 7", "Series 63",
+    "LEED", "PE", "EIT",
+    "BLS", "ACLS", "NCLEX", "CNA"
+  ]
+}
