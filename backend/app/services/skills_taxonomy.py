@@ -3,6 +3,7 @@ import re
 from pathlib import Path
 
 DATA_PATH = Path(__file__).resolve().parent.parent / "data" / "skills.json"
+TRANSFERABLE_DATA_PATH = Path(__file__).resolve().parent.parent / "data" / "transferable_skills.json"
 
 # Common abbreviations/variants that don't derive cleanly from the canonical name itself.
 EXTRA_ALIASES = {
@@ -95,3 +96,23 @@ def extract_skills_from_text(text: str) -> list[str]:
 def extract_certifications_from_text(text: str) -> list[str]:
     data = load_skills()
     return _extract(text, data["certifications"], "certifications")
+
+
+_transferable_cache = None
+
+
+def load_transferable_skills() -> dict:
+    global _transferable_cache
+    if _transferable_cache is None:
+        with open(TRANSFERABLE_DATA_PATH, "r", encoding="utf-8") as f:
+            raw = json.load(f)
+        _transferable_cache = {k.lower(): v for k, v in raw.items()}
+    return _transferable_cache
+
+
+def get_transferable_skills(skill: str) -> list[str]:
+    """Broader/related competency terms a specific skill contributes toward
+    (e.g. Selenium -> Test Automation). One-directional by design: this maps a
+    specific skill up to what it's evidence of, not sideways to other specific
+    tools that could substitute for it."""
+    return load_transferable_skills().get((skill or "").lower(), [])

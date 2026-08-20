@@ -1,0 +1,66 @@
+{
+  "Selenium": ["Test Automation", "Web Automation", "Automated Testing"],
+  "Playwright": ["Test Automation", "Web Automation", "Automated Testing"],
+  "Cypress": ["Test Automation", "Web Automation", "Automated Testing"],
+  "PyTest": ["Test Automation", "Automated Testing"],
+  "JUnit": ["Test Automation", "Automated Testing"],
+
+  "FastAPI": ["Python Backend Development", "REST API Development", "Backend Engineering"],
+  "Django": ["Python Backend Development", "REST API Development", "Backend Engineering"],
+  "Flask": ["Python Backend Development", "REST API Development", "Backend Engineering"],
+  "Spring Boot": ["Java Backend Development", "REST API Development", "Microservices", "Backend Engineering"],
+  "Node.js": ["REST API Development", "Backend Engineering"],
+  "Express.js": ["REST API Development", "Backend Engineering"],
+  "NestJS": ["REST API Development", "Backend Engineering", "Microservices"],
+  "Laravel": ["REST API Development", "Backend Engineering"],
+  "Ruby on Rails": ["REST API Development", "Backend Engineering"],
+  "ASP.NET": ["REST API Development", "Backend Engineering"],
+
+  "React": ["Frontend Engineering"],
+  "Vue": ["Frontend Engineering"],
+  "Angular": ["Frontend Engineering"],
+  "Next.js": ["Frontend Engineering", "Full Stack Development"],
+
+  "Docker": ["Container Orchestration", "DevOps"],
+  "Kubernetes": ["Container Orchestration", "DevOps"],
+  "Terraform": ["Infrastructure as Code", "DevOps"],
+  "Jenkins": ["CI/CD", "DevOps"],
+  "AWS": ["Cloud Infrastructure", "DevOps"],
+  "Azure": ["Cloud Infrastructure", "DevOps"],
+  "GCP": ["Cloud Infrastructure", "DevOps"],
+
+  "PostgreSQL": ["Relational Databases"],
+  "MySQL": ["Relational Databases"],
+  "SQLite": ["Relational Databases"],
+  "MongoDB": ["NoSQL Databases"],
+  "Redis": ["NoSQL Databases", "Caching"],
+
+  "TensorFlow": ["Machine Learning", "Deep Learning"],
+  "PyTorch": ["Machine Learning", "Deep Learning"],
+  "scikit-learn": ["Machine Learning", "Data Analysis"],
+  "Tableau": ["Data Visualization", "Data Analysis"],
+  "Power BI": ["Data Visualization", "Data Analysis"],
+  "Excel": ["Data Analysis"],
+
+  "QuickBooks": ["Accounting", "Financial Reporting"],
+  "Bookkeeping": ["Accounting"],
+  "Financial Modeling": ["Financial Analysis"],
+
+  "SEO": ["Digital Marketing"],
+  "SEM": ["Digital Marketing"],
+  "Google Analytics": ["Digital Marketing", "Data Analysis"],
+  "HubSpot": ["Digital Marketing", "Data Analysis"],
+
+  "Agile": ["Project Management"],
+  "Scrum": ["Project Management"],
+  "Kanban": ["Project Management"],
+  "Six Sigma": ["Process Improvement", "Quality Assurance"],
+
+  "AutoCAD": ["Mechanical Design"],
+  "SolidWorks": ["Mechanical Design"],
+  "CATIA": ["Mechanical Design"],
+
+  "Figma": ["UI/UX Design"],
+  "Adobe XD": ["UI/UX Design"],
+  "Sketch": ["UI/UX Design"]
+}

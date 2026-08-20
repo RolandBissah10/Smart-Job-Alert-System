@@ -20,6 +20,7 @@ class UserProfile(BaseModel):
     projects: Optional[List[str]] = []
     salary_expectation: Optional[str] = None
     work_authorization: Optional[str] = None
+    target_companies: Optional[List[str]] = []
     location: Optional[str] = "Remote"
     job_type: Optional[str] = "Full-time"
 

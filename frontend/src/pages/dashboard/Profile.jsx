@@ -232,6 +232,9 @@ export default function Profile({ onProfileChange }) {
   const [customProjectInput, setCustomProjectInput] = useState('');
   const [salaryExpectation, setSalaryExpectation] = useState('');
   const [workAuthorization, setWorkAuthorization] = useState('');
+  const [targetCompanies, setTargetCompanies] = useState([]);
+  const [customCompanyInput, setCustomCompanyInput] = useState('');
+  const [careerPaths, setCareerPaths] = useState([]);
   const [location, setLocation] = useState('Remote');
   const [jobType, setJobType] = useState('Full-time');
   const [saving, setSaving] = useState(false);
@@ -284,6 +287,8 @@ export default function Profile({ onProfileChange }) {
         setProjects(p.projects || []);
         setSalaryExpectation(p.salary_expectation || '');
         setWorkAuthorization(p.work_authorization || '');
+        setTargetCompanies(p.target_companies || []);
+        setCareerPaths(data.career_paths || []);
         setLocation(p.location || 'Remote');
         setJobType(p.job_type || 'Full-time');
         setMatchSource(data.match_source || 'profile');
@@ -444,6 +449,17 @@ export default function Profile({ onProfileChange }) {
     setProjects((prev) => prev.filter((p) => p !== project));
   };
 
+  const addTargetCompany = () => {
+    const value = customCompanyInput.trim();
+    if (!value || targetCompanies.includes(value)) return;
+    setTargetCompanies((prev) => [...prev, value]);
+    setCustomCompanyInput('');
+  };
+
+  const removeTargetCompany = (company) => {
+    setTargetCompanies((prev) => prev.filter((c) => c !== company));
+  };
+
   const buildProfilePayload = () => ({
     industry: industry || null,
     skills,
@@ -455,6 +471,7 @@ export default function Profile({ onProfileChange }) {
     projects,
     salary_expectation: salaryExpectation || null,
     work_authorization: workAuthorization || null,
+    target_companies: targetCompanies,
     location,
     job_type: jobType,
   });
@@ -514,6 +531,7 @@ export default function Profile({ onProfileChange }) {
       setProjects([]);
       setSalaryExpectation('');
       setWorkAuthorization('');
+      setTargetCompanies([]);
       setLocation('Remote');
       setJobType('Full-time');
       setExpandedCategories(new Set());
@@ -638,6 +656,26 @@ export default function Profile({ onProfileChange }) {
           )}
         </div>
       </div>
+
+      {careerPaths.length > 0 && (
+        <div className="dashboard-card career-paths-card" style={{ marginBottom: 24 }}>
+          <h3 className="profile-panel-title">Career Path Matches</h3>
+          <p className="profile-panel-text">
+            Based on your skills, you may be a strong match for:
+          </p>
+          <div className="career-paths-list">
+            {careerPaths.map(({ role, confidence }) => (
+              <div key={role} className="career-path-row">
+                <span className="career-path-role">{role}</span>
+                <div className="career-path-bar-track">
+                  <div className="career-path-bar-fill" style={{ width: `${confidence}%` }} />
+                </div>
+                <span className="career-path-confidence">{confidence}%</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="wizard-header profile-wizard-header">
         <div className="wizard-header-top">
@@ -1040,6 +1078,40 @@ export default function Profile({ onProfileChange }) {
               <p className="profile-panel-text" style={{ marginTop: 4 }}>
                 Only used to avoid jobs that explicitly require sponsorship you don&apos;t have - we never guess.
               </p>
+            </div>
+
+            <div className="profile-section">
+              <label className="profile-label">Target Companies</label>
+              <p className="profile-panel-text" style={{ marginBottom: 8 }}>
+                Jobs at these companies get a ranking boost in your feed.
+              </p>
+              <div className="chip-grid">
+                {targetCompanies.map((company) => (
+                  <button
+                    key={company}
+                    type="button"
+                    className="chip selected chip-custom"
+                    onClick={() => removeTargetCompany(company)}
+                  >
+                    {company} &times;
+                  </button>
+                ))}
+              </div>
+              <div className="custom-tech-row">
+                <input
+                  type="text"
+                  className="profile-input"
+                  placeholder="e.g. AmaliTech, Google - press Enter"
+                  value={customCompanyInput}
+                  onChange={(e) => setCustomCompanyInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') { e.preventDefault(); addTargetCompany(); }
+                  }}
+                />
+                <button type="button" className="button" onClick={addTargetCompany}>
+                  Add
+                </button>
+              </div>
             </div>
           </div>
         )}

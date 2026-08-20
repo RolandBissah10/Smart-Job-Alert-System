@@ -58,7 +58,16 @@
     "Biology", "Chemistry", "Physics", "Social Sciences", "Economics", "Environmental Science", "Neuroscience",
 
     "Customer Support", "Conflict Resolution", "Communication", "Zendesk", "Live Chat", "Ticketing Systems",
-    "Phone Support", "Email Support", "Social Media Support", "Chat Support", "Technical Support"
+    "Phone Support", "Email Support", "Social Media Support", "Chat Support", "Technical Support",
+
+    "Test Automation", "Web Automation", "Automated Testing",
+    "Backend Engineering", "REST API Development", "Microservices",
+    "Python Backend Development", "Java Backend Development",
+    "Frontend Engineering", "Full Stack Development",
+    "DevOps", "Container Orchestration", "Cloud Infrastructure", "Infrastructure as Code",
+    "Relational Databases", "NoSQL Databases", "Caching",
+    "Data Visualization", "Digital Marketing", "Project Management",
+    "Accounting", "Mechanical Design", "UI/UX Design"
   ],
   "certifications": [
     "CPA", "CFA", "CMA", "FRM", "CFP", "ACCA", "CIA",

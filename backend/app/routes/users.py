@@ -4,7 +4,8 @@ from app.db.database import users_collection
 from app.auth_utils import hash_password
 from app.auth import verify_access_token
 from app.services.cv_parser import extract_text_from_cv, parse_cv
-from app.services.profile_utils import profile_has_structured_data
+from app.services.profile_utils import profile_has_structured_data, get_profile_skills
+from app.services.career_paths import classify_career_paths
 from datetime import datetime
 
 router = APIRouter(prefix="/users", tags=["Users"])
@@ -22,13 +23,16 @@ def _require_auth(authorization: str):
 
 def serialize_user(user):
     cv_data = user.get("cv_data", {})
+    profile = user.get("profile", {})
+    candidate_skills = list(get_profile_skills(profile)) + list(cv_data.get("skills", []))
     return {
         "id": str(user["_id"]),
         "username": user.get("username", ""),
         "email": user["email"],
-        "profile": user.get("profile", {}),
+        "profile": profile,
         "profile_version": user.get("profile_version", 1),
         "match_source": user.get("match_source", "profile"),
+        "career_paths": classify_career_paths(candidate_skills),
         "cv_data": {
             "filename": cv_data.get("filename"),
             "uploaded_at": cv_data.get("uploaded_at"),

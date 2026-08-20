@@ -1329,6 +1329,46 @@ main.dashboard-main-wrapper {
   margin: 0;
 }
 
+.career-paths-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.career-path-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 200px) 1fr 48px;
+  align-items: center;
+  gap: 12px;
+}
+
+.career-path-role {
+  font-weight: 600;
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.career-path-bar-track {
+  background: var(--accent);
+  border-radius: 9999px;
+  height: 8px;
+  overflow: hidden;
+}
+
+.career-path-bar-fill {
+  background: var(--primary);
+  height: 100%;
+  border-radius: 9999px;
+}
+
+.career-path-confidence {
+  font-weight: 700;
+  color: var(--primary);
+  font-size: 0.85rem;
+  text-align: right;
+}
+
 .match-mode-grid {
   gap: 12px;
   margin: 0 0 18px;
