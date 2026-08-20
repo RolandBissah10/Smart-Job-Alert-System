@@ -10,6 +10,7 @@ db = client["job_scraper"]
 users_collection = db["users"]
 jobs_collection = db["jobs"]
 alerts_collection = db["alerts"]
+alert_configs_collection = db["alert_configs"]
 saved_jobs_collection = db["saved_jobs"]
 
 try:
@@ -26,7 +27,18 @@ try:
         alerts_collection.drop_index("user_id_1_job_id_1")
     except Exception:
         pass
-    alerts_collection.create_index([("user_id", 1), ("profile_version", 1), ("job_id", 1)], unique=True, sparse=True)
+    try:
+        alerts_collection.drop_index("user_id_1_profile_version_1_job_id_1")
+    except Exception:
+        pass
+    # Dedup is now per-alert (a user can run multiple named alerts, and the same
+    # job may legitimately qualify for more than one of them independently).
+    # alert_config_id is None for the synthetic "default" alert used by users who
+    # haven't created any explicit alerts yet - both missing-field (pre-existing
+    # rows) and explicit None count as null for this index, so old sent history
+    # still suppresses re-sends under that fallback path.
+    alerts_collection.create_index([("user_id", 1), ("alert_config_id", 1), ("job_id", 1)], unique=True, sparse=True)
+    alert_configs_collection.create_index([("user_id", 1)])
     saved_jobs_collection.create_index([("user_email", 1), ("job_id", 1)], unique=True, sparse=True)
 except Exception as e:
     logger.warning(f"Index creation skipped: {e}")

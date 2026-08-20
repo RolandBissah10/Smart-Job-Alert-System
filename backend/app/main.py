@@ -3,7 +3,7 @@ import time
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from app.routes import users, auth, jobs, saved_jobs, dashboard
+from app.routes import users, auth, jobs, saved_jobs, dashboard, alerts
 from app.tasks.scheduler import scheduler, run_job_pipeline
 from app.services.notifier import send_email
 from app.services.matcher import _get_keywords_from_profile, match_score
@@ -28,6 +28,7 @@ app.include_router(auth.router)
 app.include_router(jobs.router)
 app.include_router(saved_jobs.router)
 app.include_router(dashboard.router)
+app.include_router(alerts.router)
 
 
 @app.exception_handler(Exception)

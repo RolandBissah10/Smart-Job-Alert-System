@@ -4,11 +4,8 @@ import logging
 import time
 
 from app.config import SCHEDULER_INTERVAL_MINUTES
-from app.db.database import alerts_collection, jobs_collection, saved_jobs_collection, users_collection
-from app.services.job_filters import build_fresh_jobs_filter
-from app.services.matcher import get_matching_jobs_for_profile, profile_has_match_criteria
-from app.services.notifier import send_email
-from app.services.profile_utils import build_match_profile
+from app.db.database import jobs_collection, saved_jobs_collection, users_collection
+from app.services.alert_pipeline import process_user_alerts
 from app.services.scraper import fetch_jobs, save_jobs
 from app.performance import perf_monitor
 
@@ -58,67 +55,20 @@ def run_job_pipeline():
 
     total_sent = 0
     for user in users:
-        profile = build_match_profile(user)
-        profile_version = user.get("profile_version", 1)
-        if not profile_has_match_criteria(profile):
-            logger.info(f"Skipping {user['email']} - no profile preferences set")
+        try:
+            alert_results = process_user_alerts(user)
+        except Exception as e:
+            logger.error(f"Alert processing failed for {user['email']}: {e}")
             continue
 
-        sent_ids = [
-            a["job_id"]
-            for a in alerts_collection.find({
-                "user_id": user["_id"],
-                "profile_version": profile_version,
-            }, {"job_id": 1})
-        ]
-
-        fresh_filter = build_fresh_jobs_filter(7)
-        unalerted = list(
-            jobs_collection.find({
-                **fresh_filter,
-                "_id": {"$nin": sent_ids},
-            }).limit(500)
-        )
-        if len(unalerted) < 10:
-            fallback_filter = build_fresh_jobs_filter(30)
-            unalerted = list(
-                jobs_collection.find({
-                    **fallback_filter,
-                    "_id": {"$nin": sent_ids},
-                }).limit(500)
-            )
-
-        matched = [item["job"] for item in get_matching_jobs_for_profile(unalerted, profile)[:20]]
-        if not matched:
+        if not alert_results:
             logger.info(f"No new matches for {user['email']}")
             continue
 
-        inserted_ids = []
-        for job in matched:
-            try:
-                result = alerts_collection.insert_one({
-                    "user_id": user["_id"],
-                    "user_email": user["email"],
-                    "profile_version": profile_version,
-                    "match_source": user.get("match_source", "profile"),
-                    "job_id": job["_id"],
-                    "job_title": job.get("title", ""),
-                    "job_company": job.get("company", ""),
-                    "job_url": job.get("url", ""),
-                    "sent_at": datetime.utcnow(),
-                })
-                inserted_ids.append(result.inserted_id)
-            except Exception:
-                pass
-
-        try:
-            send_email(user["email"], matched)
-            total_sent += 1
-            logger.info(f"Digest sent to {user['email']} with {len(matched)} jobs")
-        except Exception as e:
-            logger.error(f"Email failed for {user['email']}: {e} - rolling back alerts so they retry")
-            if inserted_ids:
-                alerts_collection.delete_many({"_id": {"$in": inserted_ids}})
+        total_sent += len(alert_results)
+        for result in alert_results:
+            label = result["alert_name"] or "default"
+            logger.info(f"Digest sent to {user['email']} ({label}) with {len(result['jobs_sent'])} jobs")
 
     elapsed = time.perf_counter() - start
     logger.info(f"Pipeline done. Digest emails sent: {total_sent} in {elapsed:.2f}s")

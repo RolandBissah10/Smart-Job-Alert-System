@@ -1,7 +1,6 @@
 import re
 
-from app.db.database import users_collection
-from app.services.profile_utils import get_profile_skills, build_match_profile
+from app.services.profile_utils import get_profile_skills
 from app.services.scoring import compute_match
 
 
@@ -285,20 +284,3 @@ def score_jobs_for_user(jobs, profile: dict):
         })
     scored.sort(key=lambda item: item["score"], reverse=True)
     return scored
-
-
-def match_jobs_to_active_users(jobs):
-    matches = []
-    users = list(users_collection.find({"is_active": True}))
-    for user in users:
-        profile = build_match_profile(user)
-        if not profile_has_match_criteria(profile):
-            continue
-        for scored in get_matching_jobs_for_profile(jobs, profile):
-            matches.append({
-                "user": user,
-                "job": scored["job"],
-                "score": scored["score"],
-            })
-    matches.sort(key=lambda item: item["score"], reverse=True)
-    return matches

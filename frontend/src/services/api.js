@@ -133,6 +133,30 @@ export function getDashboard() {
   return request('/dashboard/');
 }
 
+export function getAlerts() {
+  return request('/alerts/');
+}
+
+export function createAlert(data) {
+  return request('/alerts/', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export function updateAlert(id, data) {
+  return request(`/alerts/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export function deleteAlert(id) {
+  return request(`/alerts/${id}`, {
+    method: 'DELETE',
+  });
+}
+
 export function fetchJobs() {
   return request('/jobs/scrape');
 }

@@ -4,9 +4,10 @@ from email.mime.text import MIMEText
 from app.config import EMAIL_USER, EMAIL_PASS, EMAIL_FROM, FRONTEND_URL
 
 
-def _build_html(jobs):
+def _build_html(jobs, alert_name=None):
     count = len(jobs)
     plural = "s" if count != 1 else ""
+    match_line = f'matching your "{alert_name}" alert' if alert_name else "matching your profile"
 
     job_rows = ""
     for job in jobs:
@@ -86,7 +87,7 @@ def _build_html(jobs):
               <p style="margin:10px 0 0;color:#bfdbfe;font-size:14px;">
                 We found
                 <strong style="color:#ffffff;">{count} new job{plural}</strong>
-                matching your profile
+                {match_line}
               </p>
             </td>
           </tr>
@@ -149,8 +150,9 @@ def _build_html(jobs):
 </html>"""
 
 
-def _build_plain(jobs):
-    lines = ["Smart Job Alert — New Matches\n", "=" * 40]
+def _build_plain(jobs, alert_name=None):
+    header = f'Smart Job Alert — "{alert_name}"\n' if alert_name else "Smart Job Alert — New Matches\n"
+    lines = [header, "=" * 40]
     for job in jobs:
         lines.append(f"\n{job.get('title')} at {job.get('company')}")
         lines.append(f"Location : {job.get('location', 'Remote')}")
@@ -160,20 +162,21 @@ def _build_plain(jobs):
     return "\n".join(lines)
 
 
-def send_email(recipient: str, jobs):
+def send_email(recipient: str, jobs, alert_name=None):
     if not EMAIL_USER or not EMAIL_PASS:
         raise ValueError("EMAIL_USER and EMAIL_PASS must be set in environment variables")
 
     count = len(jobs)
     plural = "s" if count != 1 else ""
+    subject_suffix = f"— {alert_name}" if alert_name else "— Smart Job Alert"
 
     msg = MIMEMultipart("alternative")
-    msg["Subject"] = f"\U0001f514 {count} New Job Alert{plural} — Smart Job Alert"
+    msg["Subject"] = f"\U0001f514 {count} New Job Alert{plural} {subject_suffix}"
     msg["From"] = EMAIL_FROM or EMAIL_USER
     msg["To"] = recipient
 
-    msg.attach(MIMEText(_build_plain(jobs), "plain", "utf-8"))
-    msg.attach(MIMEText(_build_html(jobs), "html", "utf-8"))
+    msg.attach(MIMEText(_build_plain(jobs, alert_name), "plain", "utf-8"))
+    msg.attach(MIMEText(_build_html(jobs, alert_name), "html", "utf-8"))
 
     with smtplib.SMTP("smtp.gmail.com", 587) as server:
         server.starttls()

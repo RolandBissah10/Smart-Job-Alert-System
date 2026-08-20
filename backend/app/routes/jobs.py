@@ -3,15 +3,14 @@ import logging
 
 from fastapi import APIRouter, HTTPException, Header, Query
 from app.services.scraper import fetch_jobs, save_jobs
-from app.services.matcher import get_matching_jobs_for_profile, score_jobs_for_user, profile_has_match_criteria
-from app.services.notifier import send_email
+from app.services.matcher import score_jobs_for_user, profile_has_match_criteria
 from app.services.job_filters import build_fresh_jobs_filter
 from app.services.profile_utils import build_match_profile
-from app.db.database import alerts_collection, users_collection, jobs_collection
+from app.services.alert_pipeline import process_user_alerts
+from app.db.database import users_collection, jobs_collection
 from app.auth import verify_access_token
 from app.cache import cache
 from app.performance import perf_monitor
-from datetime import datetime
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/jobs", tags=["Jobs"])
@@ -96,55 +95,15 @@ def run_pipeline():
 
     delivered = []
     for user in active_users:
-        profile = build_match_profile(user)
-        profile_version = user.get("profile_version", 1)
-        match_source = user.get("match_source", "profile")
-        if not profile_has_match_criteria(profile):
+        try:
+            alert_results = process_user_alerts(user)
+        except Exception as e:
+            logger.error(f"Alert processing failed for {user['email']}: {e}")
             continue
 
-        sent_ids = [
-            a["job_id"]
-            for a in alerts_collection.find({
-                "user_id": user["_id"],
-                "profile_version": profile_version,
-            }, {"job_id": 1})
-        ]
-
-        fresh_filter = build_fresh_jobs_filter(7)
-        unalerted = list(
-            jobs_collection.find({
-                **fresh_filter,
-                "_id": {"$nin": sent_ids},
-            }).limit(500)
-        )
-        if len(unalerted) < 10:
-            fallback_filter = build_fresh_jobs_filter(30)
-            unalerted = list(
-                jobs_collection.find({
-                    **fallback_filter,
-                    "_id": {"$nin": sent_ids},
-                }).limit(500)
-            )
-
-        jobs_for_user = [item["job"] for item in get_matching_jobs_for_profile(unalerted, profile)[:20]]
-
-        if not jobs_for_user:
-            continue
-
-        send_email(user["email"], jobs_for_user[:20])
-        for job in jobs_for_user[:20]:
-            alerts_collection.insert_one({
-                "user_id": user["_id"],
-                "user_email": user["email"],
-                "profile_version": profile_version,
-                "match_source": match_source,
-                "job_id": job["_id"],
-                "job_title": job.get("title"),
-                "job_company": job.get("company"),
-                "job_url": job.get("url"),
-                "sent_at": datetime.utcnow(),
-            })
-            delivered.append({"email": user["email"], "job_url": job.get("url")})
+        for result in alert_results:
+            for job in result["jobs_sent"]:
+                delivered.append({"email": user["email"], "job_url": job.get("url")})
 
     duration_seconds = round(time.perf_counter() - start, 2)
     logger.info(f"Manual pipeline completed in {duration_seconds}s")
