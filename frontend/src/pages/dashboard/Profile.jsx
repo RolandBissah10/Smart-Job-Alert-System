@@ -176,6 +176,22 @@ const MATCH_SOURCE_OPTIONS = [
   { value: 'both', label: 'Profile + CV' },
 ];
 
+const COMPANY_TIER_OPTIONS = [
+  { value: 'dream', label: 'Dream Company' },
+  { value: 'high_priority', label: 'High Priority' },
+  { value: 'preferred', label: 'Preferred' },
+  { value: 'monitor', label: 'Monitor' },
+];
+
+// Older saved profiles stored target_companies as plain strings, before tiers
+// existed - normalize them to the current {name, tier} shape so the UI never
+// breaks on old data.
+function normalizeTargetCompanies(list) {
+  return (list || []).map((entry) =>
+    typeof entry === 'string' ? { name: entry, tier: 'preferred' } : entry
+  );
+}
+
 function persistCustomProfileFields(selectedIndustry, selectedSkills, selectedRoles) {
   Object.keys(localStorage)
     .filter((k) => k.startsWith('customSkills_'))
@@ -287,7 +303,7 @@ export default function Profile({ onProfileChange }) {
         setProjects(p.projects || []);
         setSalaryExpectation(p.salary_expectation || '');
         setWorkAuthorization(p.work_authorization || '');
-        setTargetCompanies(p.target_companies || []);
+        setTargetCompanies(normalizeTargetCompanies(p.target_companies));
         setCareerPaths(data.career_paths || []);
         setLocation(p.location || 'Remote');
         setJobType(p.job_type || 'Full-time');
@@ -451,13 +467,17 @@ export default function Profile({ onProfileChange }) {
 
   const addTargetCompany = () => {
     const value = customCompanyInput.trim();
-    if (!value || targetCompanies.includes(value)) return;
-    setTargetCompanies((prev) => [...prev, value]);
+    if (!value || targetCompanies.some((c) => c.name === value)) return;
+    setTargetCompanies((prev) => [...prev, { name: value, tier: 'preferred' }]);
     setCustomCompanyInput('');
   };
 
-  const removeTargetCompany = (company) => {
-    setTargetCompanies((prev) => prev.filter((c) => c !== company));
+  const removeTargetCompany = (name) => {
+    setTargetCompanies((prev) => prev.filter((c) => c.name !== name));
+  };
+
+  const updateTargetCompanyTier = (name, tier) => {
+    setTargetCompanies((prev) => prev.map((c) => (c.name === name ? { ...c, tier } : c)));
   };
 
   const buildProfilePayload = () => ({
@@ -1083,20 +1103,27 @@ export default function Profile({ onProfileChange }) {
             <div className="profile-section">
               <label className="profile-label">Target Companies</label>
               <p className="profile-panel-text" style={{ marginBottom: 8 }}>
-                Jobs at these companies get a ranking boost in your feed.
+                Jobs at these companies get a ranking boost in your feed - bigger for higher-priority tiers.
               </p>
-              <div className="chip-grid">
-                {targetCompanies.map((company) => (
-                  <button
-                    key={company}
-                    type="button"
-                    className="chip selected chip-custom"
-                    onClick={() => removeTargetCompany(company)}
+              {targetCompanies.map((company) => (
+                <div key={company.name} className="custom-tech-row" style={{ marginBottom: 8 }}>
+                  <span className="chip selected chip-custom" style={{ flex: '0 0 auto' }}>
+                    {company.name}
+                  </span>
+                  <select
+                    className="profile-input profile-select"
+                    value={company.tier || 'preferred'}
+                    onChange={(e) => updateTargetCompanyTier(company.name, e.target.value)}
                   >
-                    {company} &times;
+                    {COMPANY_TIER_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                  <button type="button" className="button button-danger" onClick={() => removeTargetCompany(company.name)}>
+                    Remove
                   </button>
-                ))}
-              </div>
+                </div>
+              ))}
               <div className="custom-tech-row">
                 <input
                   type="text"

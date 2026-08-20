@@ -9,6 +9,11 @@ class EducationEntry(BaseModel):
     source: Optional[str] = "profile"  # "profile" | "cv" - lets the UI show provenance
 
 
+class TargetCompany(BaseModel):
+    name: str
+    tier: Optional[str] = "preferred"  # "dream" | "high_priority" | "preferred" | "monitor"
+
+
 class UserProfile(BaseModel):
     industry: Optional[str] = None
     skills: Optional[List[str]] = []
@@ -20,7 +25,7 @@ class UserProfile(BaseModel):
     projects: Optional[List[str]] = []
     salary_expectation: Optional[str] = None
     work_authorization: Optional[str] = None
-    target_companies: Optional[List[str]] = []
+    target_companies: Optional[List[TargetCompany]] = []
     location: Optional[str] = "Remote"
     job_type: Optional[str] = "Full-time"
 

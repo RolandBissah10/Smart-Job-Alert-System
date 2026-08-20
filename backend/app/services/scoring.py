@@ -19,11 +19,13 @@ from app.services.career_paths import classify_career_paths
 # has "Selenium"). Counts for something, but less than an exact match.
 TRANSFERABLE_CREDIT = 0.5
 
-# Flat bonus for a job at one of the candidate's watch-listed companies. Additive
-# only, applied after the weighted dimension score - per product requirement,
-# target-company priority must never override hard eligibility (already decided
-# before compute_match ever runs) or dominate the underlying match quality.
-TARGET_COMPANY_BONUS = 8
+# Bonus for a job at one of the candidate's watch-listed companies, scaled by how
+# badly they want to work there. Additive only, applied after the weighted
+# dimension score - per product requirement, target-company priority must never
+# override hard eligibility (already decided before compute_match ever runs) or
+# dominate the underlying match quality.
+TIER_BONUSES = {"dream": 15, "high_priority": 10, "preferred": 6, "monitor": 3}
+DEFAULT_TIER_BONUS = TIER_BONUSES["preferred"]
 
 DIMENSION_WEIGHTS = {"skills": 0.40, "seniority": 0.20, "education": 0.10, "location": 0.15, "role": 0.15}
 
@@ -158,11 +160,22 @@ def score_role_dimension(job: dict, profile: dict) -> dict:
     return {"score": score, "matched": hits, "explanation": explanation}
 
 
-def _is_target_company(job: dict, profile: dict) -> bool:
-    target_companies = {c.strip().lower() for c in (profile.get("target_companies") or []) if c and c.strip()}
-    if not target_companies:
-        return False
-    return _normalize(job.get("company", "")) in target_companies
+def _target_company_match(job: dict, profile: dict):
+    """Returns the matched target-company entry (name/tier/bonus) or None.
+    Accepts both the current {name, tier} shape and plain-string entries saved
+    before tiers existed (treated as "preferred" tier)."""
+    job_company = _normalize(job.get("company", ""))
+    if not job_company:
+        return None
+
+    for entry in (profile.get("target_companies") or []):
+        if isinstance(entry, str):
+            name, tier = entry, "preferred"
+        else:
+            name, tier = entry.get("name", ""), entry.get("tier", "preferred")
+        if name and _normalize(name) == job_company:
+            return {"name": name, "tier": tier, "bonus": TIER_BONUSES.get(tier, DEFAULT_TIER_BONUS)}
+    return None
 
 
 def compute_match(job: dict, profile: dict) -> dict:
@@ -179,10 +192,12 @@ def compute_match(job: dict, profile: dict) -> dict:
     reasons.extend(components["skills"].get("transferred", [])[:2])
     reasons.extend(components["role"].get("matched", [])[:2])
 
-    is_target_company = _is_target_company(job, profile)
-    if is_target_company:
-        overall = min(100, overall + TARGET_COMPANY_BONUS)
-        reasons.append(f"Target company: {job.get('company', '')}")
+    target_match = _target_company_match(job, profile)
+    is_target_company = bool(target_match)
+    if target_match:
+        overall = min(100, overall + target_match["bonus"])
+        tier_label = target_match["tier"].replace("_", " ").title()
+        reasons.append(f"Target company ({tier_label}): {target_match['name']}")
 
     candidate_skills = list(_candidate_skill_set(profile))
     top_paths = classify_career_paths(candidate_skills, limit=1)
