@@ -407,11 +407,19 @@ def _fetch_glmis_ghana():
             location = next((line for line in lines if any(token in line.lower() for token in ["accra", "tema", "osu", "kumasi", "tamale", "takoradi", "weija", "konongo"])), "Ghana")
             description = " ".join(lines[2:8])[:500]
 
+            if not detail_link:
+                # No per-job link on this card - build a stable, unique synthetic
+                # URL from title+company instead of falling back to the shared
+                # listings page URL, which collided across every such job on the
+                # unique `url` index and silently dropped all but the first.
+                slug = re.sub(r"[^a-z0-9]+", "-", f"{title}-{company}".lower()).strip("-")
+                detail_link = f"https://www.glmis.gov.gh/Jobs/Joblistings#{slug}"
+
             jobs.append({
                 "title": title,
                 "company": company,
                 "location": location,
-                "url": detail_link or "https://www.glmis.gov.gh/Jobs/Joblistings",
+                "url": detail_link,
                 "source": "glmis_ghana",
                 "description": description,
                 # No structured posting date is available on this listing page.
