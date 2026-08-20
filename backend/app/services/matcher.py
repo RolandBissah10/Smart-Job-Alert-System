@@ -116,13 +116,18 @@ _NO_SPONSORSHIP_PATTERNS = [
     r"must have.{0,20}work permit",
 ]
 
+# Guards against "I don't need sponsorship" / "no longer need a visa" etc. being
+# read as the opposite of what they mean - each lookbehind must be fixed-width,
+# so common negations are listed individually rather than as one alternation.
+_NEGATION_GUARD = r"(?<!don't )(?<!do not )(?<!won't )(?<!never )(?<!not )(?<!no longer )"
+
 _NEEDS_SPONSORSHIP_PATTERNS = [
-    r"need.{0,25}sponsorship",
-    r"require.{0,25}sponsorship",
-    r"need.{0,25}visa",
-    r"require.{0,25}visa",
-    r"need.{0,25}work permit",
-    r"require.{0,25}work permit",
+    _NEGATION_GUARD + r"need.{0,25}sponsorship",
+    _NEGATION_GUARD + r"require.{0,25}sponsorship",
+    _NEGATION_GUARD + r"need.{0,25}visa",
+    _NEGATION_GUARD + r"require.{0,25}visa",
+    _NEGATION_GUARD + r"need.{0,25}work permit",
+    _NEGATION_GUARD + r"require.{0,25}work permit",
 ]
 
 

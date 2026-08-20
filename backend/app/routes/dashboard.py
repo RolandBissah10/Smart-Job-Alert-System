@@ -3,16 +3,10 @@ from app.db.database import users_collection, jobs_collection, alerts_collection
 from app.auth import verify_access_token
 from app.services.job_filters import build_fresh_jobs_filter
 from app.services.matcher import score_jobs_for_user, profile_has_match_criteria
+from app.services.profile_utils import build_match_profile
 from app.cache import cache, cached
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
-
-
-def _build_match_profile(user: dict) -> dict:
-    profile = dict(user.get("profile", {}))
-    profile["match_source"] = user.get("match_source", "profile")
-    profile["cv_keywords"] = user.get("cv_data", {}).get("keywords", [])
-    return profile
 
 
 def _require_auth(authorization: str):
@@ -33,7 +27,7 @@ def get_dashboard(authorization: str = Header(None)):
         raise HTTPException(status_code=404, detail="User not found")
 
     user_id = user["_id"]
-    profile = _build_match_profile(user)
+    profile = build_match_profile(user)
     profile_version = user.get("profile_version", 1)
     profile_complete = profile_has_match_criteria(profile)
 

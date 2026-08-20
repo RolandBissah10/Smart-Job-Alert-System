@@ -6,6 +6,7 @@ from bs4 import BeautifulSoup
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from app.db.database import jobs_collection
 from app.config import ADZUNA_APP_ID, ADZUNA_APP_KEY
+from app.cache import cache
 from app.services.skills_taxonomy import extract_skills_from_text
 from app.services.seniority import classify_seniority_from_title
 from datetime import datetime
@@ -625,6 +626,12 @@ def save_jobs(jobs):
             jobs_collection.insert_many(new_jobs, ordered=False)
         except Exception as e:
             logger.error(f"Bulk insert error: {e}")
+
+    # New jobs (or refreshed last_seen_at on existing ones) change what counts as
+    # "fresh" for every user - without this, the dashboard/job-feed caches would
+    # keep serving pre-scrape results for up to their full TTL (10+ minutes).
+    if new_jobs or active_urls:
+        cache.clear()
 
     logger.info(f"save_jobs: {len(new_jobs)} new, {len(active_urls)} refreshed out of {len(valid)} fetched")
     return new_jobs
