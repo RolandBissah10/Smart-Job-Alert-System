@@ -179,3 +179,86 @@ def send_email(recipient: str, jobs):
         server.starttls()
         server.login(EMAIL_USER, EMAIL_PASS)
         server.send_message(msg)
+
+
+def _build_reset_plain(reset_link):
+    return (
+        "Reset your Smart Job Alert password\n"
+        "=====================================\n\n"
+        f"We received a request to reset your password. Open this link to choose a new one:\n\n"
+        f"{reset_link}\n\n"
+        "This link expires in 30 minutes. If you didn't request this, you can safely ignore this email."
+    )
+
+
+def _build_reset_html(reset_link):
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Reset your password</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f1f5f9;
+             font-family:Arial,Helvetica,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f1f5f9;">
+    <tr>
+      <td align="center" style="padding:40px 16px;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;">
+          <tr>
+            <td align="center"
+                style="background-color:#1e40af;border-radius:16px 16px 0 0;padding:36px 32px;">
+              <p style="margin:0;font-size:28px;">&#128274;</p>
+              <h1 style="margin:8px 0 0;color:#ffffff;font-size:22px;
+                         font-weight:800;letter-spacing:-0.5px;">
+                Reset your password
+              </h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color:#f8fafc;padding:28px 32px;">
+              <p style="margin:0 0 20px;font-size:14px;color:#475569;">
+                We received a request to reset your Smart Job Alert password. Click below to choose a new one:
+              </p>
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="center">
+                    <a href="{reset_link}"
+                       style="display:inline-block;padding:12px 28px;
+                              background-color:#1e40af;color:#ffffff;
+                              text-decoration:none;border-radius:8px;
+                              font-size:14px;font-weight:600;">
+                      Reset Password
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:20px 0 0;font-size:12px;color:#94a3b8;text-align:center;">
+                This link expires in 30 minutes. If you didn't request this, you can ignore this email.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>"""
+
+
+def send_password_reset_email(recipient: str, reset_link: str):
+    if not EMAIL_USER or not EMAIL_PASS:
+        raise ValueError("EMAIL_USER and EMAIL_PASS must be set in environment variables")
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = "Reset your Smart Job Alert password"
+    msg["From"] = EMAIL_FROM or EMAIL_USER
+    msg["To"] = recipient
+
+    msg.attach(MIMEText(_build_reset_plain(reset_link), "plain", "utf-8"))
+    msg.attach(MIMEText(_build_reset_html(reset_link), "html", "utf-8"))
+
+    with smtplib.SMTP("smtp.gmail.com", 587) as server:
+        server.starttls()
+        server.login(EMAIL_USER, EMAIL_PASS)
+        server.send_message(msg)

@@ -17,6 +17,12 @@ def create_refresh_token(data: dict, expires_days: int = 1) -> str:
     return jwt.encode(to_encode, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 
+def create_reset_token(email: str, nonce: str, expires_minutes: int = 30) -> str:
+    expire = datetime.utcnow() + timedelta(minutes=expires_minutes)
+    to_encode = {"email": email, "nonce": nonce, "exp": expire, "type": "reset"}
+    return jwt.encode(to_encode, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+
 def verify_access_token(token: str):
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
