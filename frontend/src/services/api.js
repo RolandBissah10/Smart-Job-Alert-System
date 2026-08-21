@@ -161,6 +161,10 @@ export function fetchJobs() {
   return request('/jobs/scrape');
 }
 
+export function searchCompanies(query = '') {
+  return request(`/jobs/companies?q=${encodeURIComponent(query)}`);
+}
+
 export function getJobFeed(page = 1, pageSize = 6) {
   return request(`/jobs/feed?page=${page}&page_size=${pageSize}`);
 }

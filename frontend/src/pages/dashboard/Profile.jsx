@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getMe, updateProfile, resetProfile, uploadCv, deleteCv, updateMatchSource } from '../../services/api';
 import { CheckCircle, ChevronRight, ChevronLeft, ChevronDown } from 'lucide-react';
+import useCompanySearch from '../../hooks/useCompanySearch';
 
 const INDUSTRIES = [
   { value: 'technology', label: 'Technology & Software' },
@@ -250,6 +251,7 @@ export default function Profile({ onProfileChange }) {
   const [workAuthorization, setWorkAuthorization] = useState('');
   const [targetCompanies, setTargetCompanies] = useState([]);
   const [customCompanyInput, setCustomCompanyInput] = useState('');
+  const [showCompanySuggestions, setShowCompanySuggestions] = useState(false);
   const [careerPaths, setCareerPaths] = useState([]);
   const [location, setLocation] = useState('Remote');
   const [jobType, setJobType] = useState('Full-time');
@@ -263,6 +265,8 @@ export default function Profile({ onProfileChange }) {
   const [profileExists, setProfileExists] = useState(false);
   const [matchSource, setMatchSource] = useState('profile');
   const [cvData, setCvData] = useState({ has_cv: false, filename: '', keyword_count: 0, preview: '' });
+
+  const companySuggestions = useCompanySearch(customCompanyInput, { enabled: showCompanySuggestions });
 
   const skillCategories = industry ? (INDUSTRY_SKILLS[industry] || []) : [];
   const allPresetSkills = skillCategories.flatMap((c) => c.items);
@@ -465,11 +469,12 @@ export default function Profile({ onProfileChange }) {
     setProjects((prev) => prev.filter((p) => p !== project));
   };
 
-  const addTargetCompany = () => {
-    const value = customCompanyInput.trim();
+  const addTargetCompany = (nameOverride) => {
+    const value = (nameOverride ?? customCompanyInput).trim();
     if (!value || targetCompanies.some((c) => c.name === value)) return;
     setTargetCompanies((prev) => [...prev, { name: value, tier: 'preferred' }]);
     setCustomCompanyInput('');
+    setShowCompanySuggestions(false);
   };
 
   const removeTargetCompany = (name) => {
@@ -1125,17 +1130,37 @@ export default function Profile({ onProfileChange }) {
                 </div>
               ))}
               <div className="custom-tech-row">
-                <input
-                  type="text"
-                  className="profile-input"
-                  placeholder="e.g. AmaliTech, Google - press Enter"
-                  value={customCompanyInput}
-                  onChange={(e) => setCustomCompanyInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') { e.preventDefault(); addTargetCompany(); }
-                  }}
-                />
-                <button type="button" className="button" onClick={addTargetCompany}>
+                <div className="autocomplete-input-wrapper">
+                  <input
+                    type="text"
+                    className="profile-input"
+                    placeholder="e.g. AmaliTech, Google - press Enter"
+                    value={customCompanyInput}
+                    onChange={(e) => setCustomCompanyInput(e.target.value)}
+                    onFocus={() => setShowCompanySuggestions(true)}
+                    onBlur={() => setTimeout(() => setShowCompanySuggestions(false), 150)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') { e.preventDefault(); addTargetCompany(); }
+                    }}
+                  />
+                  {showCompanySuggestions && companySuggestions.length > 0 && (
+                    <div className="autocomplete-dropdown">
+                      {companySuggestions
+                        .filter((name) => !targetCompanies.some((c) => c.name === name))
+                        .map((name) => (
+                          <button
+                            key={name}
+                            type="button"
+                            className="autocomplete-option"
+                            onMouseDown={(e) => { e.preventDefault(); addTargetCompany(name); }}
+                          >
+                            {name}
+                          </button>
+                        ))}
+                    </div>
+                  )}
+                </div>
+                <button type="button" className="button" onClick={() => addTargetCompany()}>
                   Add
                 </button>
               </div>

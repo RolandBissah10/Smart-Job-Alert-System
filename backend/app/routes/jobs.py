@@ -1,4 +1,5 @@
 import time
+import re
 import logging
 
 from fastapi import APIRouter, HTTPException, Header, Query
@@ -31,6 +32,30 @@ def scrape_jobs():
     jobs = fetch_jobs()
     new_jobs = save_jobs(jobs)
     return {"count": len(new_jobs), "new_jobs": new_jobs}
+
+
+@router.get("/companies")
+def search_companies(q: str = Query("", max_length=100), limit: int = Query(10, ge=1, le=25)):
+    """Company-name suggestions drawn from real scraped job postings - used to
+    power autocomplete on target-company inputs. No auth required: this is the
+    same sensitivity level as /jobs/scrape (public job posting data)."""
+    query = q.strip()
+
+    if not query:
+        pipeline = [
+            {"$match": {"company": {"$nin": [None, ""]}}},
+            {"$group": {"_id": "$company", "count": {"$sum": 1}}},
+            {"$sort": {"count": -1}},
+            {"$limit": limit},
+        ]
+        companies = [doc["_id"] for doc in jobs_collection.aggregate(pipeline)]
+        return {"companies": companies}
+
+    pattern = re.compile(re.escape(query), re.IGNORECASE)
+    names = [n for n in jobs_collection.distinct("company", {"company": pattern}) if n]
+    query_lower = query.lower()
+    names.sort(key=lambda n: (not n.lower().startswith(query_lower), n.lower()))
+    return {"companies": names[:limit]}
 
 
 @router.get("/feed")

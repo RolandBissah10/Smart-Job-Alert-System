@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getDashboard, getAlerts, createAlert, updateAlert, deleteAlert } from '../../services/api';
 import { Bell, RefreshCw, Plus, Pencil, Trash2 } from 'lucide-react';
+import useCompanySearch from '../../hooks/useCompanySearch';
 
 const REFRESH_INTERVAL = 24 * 60 * 60 * 1000;
 
@@ -54,14 +55,17 @@ function formToCriteria(form) {
   };
 }
 
-function ChipInput({ label, values, onAdd, onRemove, placeholder }) {
+function ChipInput({ label, values, onAdd, onRemove, placeholder, withCompanySuggestions = false }) {
   const [input, setInput] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const suggestions = useCompanySearch(input, { enabled: withCompanySuggestions && showSuggestions });
 
-  const add = () => {
-    const value = input.trim();
+  const add = (valueOverride) => {
+    const value = (valueOverride ?? input).trim();
     if (!value || values.includes(value)) return;
     onAdd(value);
     setInput('');
+    setShowSuggestions(false);
   };
 
   return (
@@ -75,17 +79,37 @@ function ChipInput({ label, values, onAdd, onRemove, placeholder }) {
         ))}
       </div>
       <div className="custom-tech-row">
-        <input
-          type="text"
-          className="profile-input"
-          placeholder={placeholder}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') { e.preventDefault(); add(); }
-          }}
-        />
-        <button type="button" className="button" onClick={add}>Add</button>
+        <div className="autocomplete-input-wrapper">
+          <input
+            type="text"
+            className="profile-input"
+            placeholder={placeholder}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onFocus={() => setShowSuggestions(true)}
+            onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') { e.preventDefault(); add(); }
+            }}
+          />
+          {withCompanySuggestions && showSuggestions && suggestions.length > 0 && (
+            <div className="autocomplete-dropdown">
+              {suggestions
+                .filter((name) => !values.includes(name))
+                .map((name) => (
+                  <button
+                    key={name}
+                    type="button"
+                    className="autocomplete-option"
+                    onMouseDown={(e) => { e.preventDefault(); add(name); }}
+                  >
+                    {name}
+                  </button>
+                ))}
+            </div>
+          )}
+        </div>
+        <button type="button" className="button" onClick={() => add()}>Add</button>
       </div>
     </div>
   );
@@ -320,6 +344,7 @@ export default function Alerts({ refreshKey }) {
             placeholder="e.g. AmaliTech, Hubtel - press Enter"
             onAdd={(v) => setForm((f) => ({ ...f, target_companies: [...f.target_companies, v] }))}
             onRemove={(v) => setForm((f) => ({ ...f, target_companies: f.target_companies.filter((c) => c !== v) }))}
+            withCompanySuggestions
           />
 
           <div className="wizard-footer" style={{ marginTop: 16 }}>

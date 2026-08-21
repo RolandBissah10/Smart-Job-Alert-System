@@ -1839,6 +1839,46 @@ select {
   flex-wrap: wrap;
 }
 
+.autocomplete-input-wrapper {
+  position: relative;
+  flex: 1 1 220px;
+}
+
+.autocomplete-input-wrapper .profile-input {
+  width: 100%;
+}
+
+.autocomplete-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  max-height: 220px;
+  overflow-y: auto;
+  z-index: 20;
+}
+
+.autocomplete-option {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 10px 14px;
+  background: none;
+  border: none;
+  font-size: 0.9rem;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.autocomplete-option:hover,
+.autocomplete-option:focus {
+  background: var(--accent);
+}
+
 .custom-tech-row .profile-input {
   flex: 1;
   max-width: none;
