@@ -505,6 +505,397 @@ def _fetch_arc_ghana():
 
 
 
+# ---------------------------------------------------------------------------
+# Company-specific sources: each of these is one requested company's own
+# careers page rather than a general aggregator. Four ATS platforms (Greenhouse,
+# Ashby, SmartRecruiters, Zoho Recruit) host more than one of the requested
+# companies, so each gets one small generic helper below, parameterized by the
+# company's board token - adding another company on the same platform later is
+# a one-line call, not a new scraper.
+# ---------------------------------------------------------------------------
+
+def _fetch_greenhouse_board(token: str, source_name: str) -> list:
+    jobs = []
+    try:
+        r = requests.get(
+            f"https://boards-api.greenhouse.io/v1/boards/{token}/jobs",
+            params={"content": "true"},
+            headers=HEADERS,
+            timeout=TIMEOUT,
+        )
+        r.raise_for_status()
+        for item in r.json().get("jobs", []):
+            posted_date = _parse_date_safe(item.get("first_published")) or _parse_date_safe(item.get("updated_at"))
+            jobs.append({
+                "title": item.get("title", ""),
+                "company": item.get("company_name", "") or source_name,
+                "location": (item.get("location") or {}).get("name", "") or "Remote",
+                "url": item.get("absolute_url"),
+                "source": source_name,
+                "description": BeautifulSoup(item.get("content", ""), "html.parser").get_text()[:500],
+                "posted_date": posted_date,
+                "date_is_estimated": item.get("first_published") is None,
+            })
+        logger.info(f"{source_name} (Greenhouse): {len(jobs)} jobs")
+    except Exception as e:
+        logger.error(f"{source_name} (Greenhouse) failed: {e}")
+    return jobs
+
+
+def _fetch_ashby_board(board_name: str, source_name: str, company_name: str) -> list:
+    jobs = []
+    try:
+        r = requests.get(
+            f"https://api.ashbyhq.com/posting-api/job-board/{board_name}",
+            headers=HEADERS,
+            timeout=TIMEOUT,
+        )
+        r.raise_for_status()
+        for item in r.json().get("jobs", []):
+            posted_date = _parse_date_safe(item.get("publishedAt"))
+            jobs.append({
+                "title": item.get("title", ""),
+                "company": company_name,
+                "location": item.get("location") or ("Remote" if item.get("isRemote") else "") or "Remote",
+                "url": item.get("jobUrl") or item.get("applyUrl"),
+                "source": source_name,
+                "description": _clean_text(item.get("descriptionPlain", ""))[:500],
+                "employment_type": item.get("employmentType") or None,
+                "posted_date": posted_date,
+                "date_is_estimated": posted_date is None,
+            })
+        logger.info(f"{source_name} (Ashby): {len(jobs)} jobs")
+    except Exception as e:
+        logger.error(f"{source_name} (Ashby) failed: {e}")
+    return jobs
+
+
+def _fetch_smartrecruiters_board(company_id: str, source_name: str, country: str = None, company_name: str = None) -> list:
+    jobs = []
+    try:
+        params = {}
+        if country:
+            params["country"] = country
+        r = requests.get(
+            f"https://api.smartrecruiters.com/v1/companies/{company_id}/postings",
+            params=params,
+            headers=HEADERS,
+            timeout=TIMEOUT,
+        )
+        r.raise_for_status()
+        for item in r.json().get("content", []):
+            posted_date = _parse_date_safe(item.get("releasedDate"))
+            location = item.get("location") or {}
+            location_text = location.get("fullLocation") or location.get("city") or "Remote"
+            employment_type = (item.get("typeOfEmployment") or {}).get("label")
+            department = (item.get("department") or {}).get("label", "")
+            experience = (item.get("experienceLevel") or {}).get("label", "")
+            # Prefer our explicit override (e.g. "Standard Bank Ghana" for a
+            # country-filtered feed) over the API's own company name, which is
+            # often the parent multinational's registered name, not the local
+            # subsidiary brand a user would actually type into a watch list.
+            company_display = company_name or (item.get("company") or {}).get("name") or source_name
+            jobs.append({
+                "title": item.get("name", ""),
+                "company": company_display,
+                "location": location_text,
+                "url": f"https://jobs.smartrecruiters.com/{company_id}/{item.get('id')}",
+                "source": source_name,
+                "description": _clean_text(" - ".join(filter(None, [department, experience])))[:500],
+                "employment_type": employment_type,
+                "posted_date": posted_date,
+                "date_is_estimated": posted_date is None,
+            })
+        logger.info(f"{source_name} (SmartRecruiters): {len(jobs)} jobs")
+    except Exception as e:
+        logger.error(f"{source_name} (SmartRecruiters) failed: {e}")
+    return jobs
+
+
+def _fetch_zoho_recruit_hidden_json(page_url: str, source_name: str, company_name: str, default_location: str = "Ghana") -> list:
+    """The visible page is a Zoho Recruit JS widget, but the full job list ships
+    as JSON inside a hidden <input id="jobs"> in the raw server-rendered HTML -
+    no JS execution needed to read it."""
+    jobs = []
+    try:
+        soup = _fetch_soup(page_url)
+        hidden = soup.find("input", {"type": "hidden", "id": "jobs"})
+        if not hidden or not hidden.get("value"):
+            logger.warning(f"{source_name} (Zoho Recruit): hidden jobs input not found")
+            return []
+        for item in json.loads(hidden["value"]):
+            if item.get("Publish") is False:
+                continue
+            posted_date = _parse_date_safe(item.get("Date_Opened"))
+            job_id = item.get("id")
+            base_url = page_url.rsplit("/Careers", 1)[0] + "/Careers"
+            jobs.append({
+                "title": item.get("Posting_Title") or item.get("Job_Opening_Name", ""),
+                "company": company_name,
+                "location": item.get("City") or default_location,
+                "url": f"{base_url}/{job_id}" if job_id else page_url,
+                "source": source_name,
+                "description": _clean_text(item.get("Job_Description", ""))[:500],
+                "employment_type": item.get("Job_Type") or None,
+                "posted_date": posted_date,
+                "date_is_estimated": posted_date is None,
+            })
+        logger.info(f"{source_name} (Zoho Recruit): {len(jobs)} jobs")
+    except Exception as e:
+        logger.error(f"{source_name} (Zoho Recruit) failed: {e}")
+    return jobs
+
+
+def _fetch_canonical():
+    return _fetch_greenhouse_board("canonical", "canonical")
+
+
+def _fetch_turing():
+    return _fetch_greenhouse_board("turing", "turing")
+
+
+def _fetch_mkopa():
+    return _fetch_ashby_board("M-KOPA", "mkopa", "M-KOPA")
+
+
+def _fetch_amalitech_careers():
+    return _fetch_smartrecruiters_board("AmaliTech", "amalitech", company_name="AmaliTech")
+
+
+def _fetch_standard_bank_ghana():
+    return _fetch_smartrecruiters_board("StandardBankGroup", "standard_bank_gh", country="gh", company_name="Standard Bank Ghana")
+
+
+def _fetch_telecel_ghana():
+    return _fetch_zoho_recruit_hidden_json("https://telecel.zohorecruit.com/jobs/Careers", "telecel_ghana", "Telecel Ghana")
+
+
+def _fetch_fido():
+    jobs = []
+    try:
+        soup = _fetch_soup("https://gh.fido.money/careers")
+        for card in soup.find_all("a", class_="careers__career_list_content_wrapper"):
+            href = card.get("href", "")
+            if not href or not href.startswith("/careers/"):
+                continue
+            title_node = card.select_one("h3")
+            location_node = card.select_one('[fs-cmsfilter-field="country"]')
+            tag_node = card.select_one('[fs-cmsfilter-field="tag"]')
+            title = _clean_text(title_node.get_text(" ", strip=True)) if title_node else ""
+            if not title:
+                continue
+            jobs.append({
+                "title": title,
+                "company": "Fido",
+                "location": _clean_text(location_node.get_text(" ", strip=True)) if location_node else "Remote",
+                "url": urljoin("https://gh.fido.money", href),
+                "source": "fido",
+                "description": _clean_text(tag_node.get_text(" ", strip=True)) if tag_node else "",
+                "posted_date": None,
+                "date_is_estimated": True,
+            })
+        logger.info(f"Fido: {len(jobs)} jobs")
+    except Exception as e:
+        logger.error(f"Fido failed: {e}")
+    return jobs
+
+
+def _fetch_mpharma():
+    jobs = []
+    try:
+        soup = _fetch_soup("https://erp.mpharma.com/jobs")
+        for card in soup.find_all(attrs={"role": "button", "name": "card"}):
+            card_id = card.get("id", "")
+            if not card_id:
+                continue
+            title_node = card.select_one("h4")
+            badge_node = card.select_one(".other-badge")
+            title = _clean_text(title_node.get_text(" ", strip=True)) if title_node else ""
+            if not title:
+                continue
+            body_text = _clean_text(card.get_text(" ", strip=True))
+            employment_type = _clean_text(badge_node.get_text(" ", strip=True)) if badge_node else None
+            if employment_type:
+                employment_type = re.sub(r"^[^A-Za-z0-9]+", "", employment_type).strip()
+            jobs.append({
+                "title": title,
+                "company": "mPharma",
+                # Precise location isn't reliably separable from this card's markup -
+                # best-effort scan of the card's own text for a Ghanaian city name.
+                "location": next((c for c in ["Accra", "Kumasi", "Takoradi", "Ghana"] if c in body_text), "Ghana"),
+                "url": f"https://erp.mpharma.com/{card_id}",
+                "source": "mpharma",
+                "description": body_text[:500],
+                "employment_type": employment_type,
+                "posted_date": None,
+                "date_is_estimated": True,
+            })
+        logger.info(f"mPharma: {len(jobs)} jobs")
+    except Exception as e:
+        logger.error(f"mPharma failed: {e}")
+    return jobs
+
+
+def _fetch_farmerline():
+    jobs = []
+    try:
+        soup = _fetch_soup("https://farmerline.co/careers/")
+        for card in soup.find_all("a", class_="job-listing"):
+            href = card.get("href", "")
+            if "job-id=" not in href:
+                continue
+            title_node = card.select_one("h3")
+            location_node = card.select_one("ul li")
+            title = _clean_text(title_node.get_text(" ", strip=True)) if title_node else ""
+            if not title:
+                continue
+            jobs.append({
+                "title": title,
+                "company": "Farmerline",
+                "location": _clean_text(location_node.get_text(" ", strip=True)) if location_node else card.get("data-loc", "Ghana"),
+                "url": href,
+                "source": "farmerline",
+                "description": "",
+                "posted_date": None,
+                "date_is_estimated": True,
+            })
+        logger.info(f"Farmerline: {len(jobs)} jobs")
+    except Exception as e:
+        logger.error(f"Farmerline failed: {e}")
+    return jobs
+
+
+def _fetch_mtn_ghana():
+    jobs = []
+    try:
+        r = requests.get("https://mtn.com.gh/careers/feed/", headers=HEADERS, timeout=TIMEOUT)
+        r.raise_for_status()
+        root = ET.fromstring(r.content)
+        for item in root.findall(".//item"):
+            title = (item.findtext("title") or "").strip()
+            link = (item.findtext("link") or "").strip()
+            if not title or not link:
+                continue
+            posted_date = _parse_date_safe(item.findtext("pubDate"))
+            jobs.append({
+                "title": title,
+                "company": "MTN Ghana",
+                "location": "Ghana",
+                "url": link,
+                "source": "mtn_ghana",
+                "description": "",
+                "posted_date": posted_date,
+                "date_is_estimated": posted_date is None,
+            })
+        logger.info(f"MTN Ghana: {len(jobs)} jobs")
+    except Exception as e:
+        logger.error(f"MTN Ghana failed: {e}")
+    return jobs
+
+
+def _fetch_expresspay():
+    jobs = []
+    try:
+        soup = _fetch_soup("https://expresspaygh.com/careers")
+        for anchor in soup.find_all("a", href=True):
+            href = anchor["href"]
+            if "/job-listing?id=" not in href:
+                continue
+            row = anchor.find_parent("tr")
+            cells = [td.get_text(" ", strip=True) for td in row.find_all("td")] if row else []
+            title = _clean_text(cells[0]) if cells else _clean_text(anchor.get_text(" ", strip=True))
+            if not title:
+                continue
+            jobs.append({
+                "title": title,
+                "company": "ExpressPay",
+                "location": _clean_text(cells[2]) if len(cells) > 2 else "Ghana",
+                "url": urljoin("https://expresspaygh.com", href),
+                "source": "expresspay",
+                "description": "",
+                "employment_type": _clean_text(cells[1]) if len(cells) > 1 else None,
+                "posted_date": None,
+                "date_is_estimated": True,
+            })
+        logger.info(f"ExpressPay: {len(jobs)} jobs")
+    except Exception as e:
+        logger.error(f"ExpressPay failed: {e}")
+    return jobs
+
+
+def _fetch_generic_careers_page(url: str, base_url: str, source_name: str, company_name: str, href_predicate) -> list:
+    """Best-effort fallback for a company's own plain HTML careers page that
+    currently has no open roles to verify a precise selector against. Checks
+    JSON-LD JobPosting first (in case one gets added later), otherwise collects
+    anchors matching href_predicate. Intentionally conservative - returns []
+    rather than picking up unrelated nav links when nothing matches."""
+    jobs = []
+    try:
+        soup = _fetch_soup(url)
+        json_ld = _extract_json_ld_jobposting(soup)
+        if json_ld.get("title"):
+            posted_date = json_ld.get("posted_date")
+            jobs.append({
+                "title": json_ld["title"],
+                "company": company_name,
+                "location": json_ld.get("location") or "Ghana",
+                "url": url,
+                "source": source_name,
+                "description": json_ld.get("description", ""),
+                "employment_type": json_ld.get("employment_type"),
+                "posted_date": posted_date,
+                "date_is_estimated": posted_date is None,
+            })
+            return jobs
+
+        seen = set()
+        for anchor in soup.find_all("a", href=True):
+            href = anchor["href"]
+            if not href_predicate(href):
+                continue
+            full_url = urljoin(base_url, href)
+            if full_url in seen or full_url.rstrip("/") == url.rstrip("/"):
+                continue
+            title = _clean_text(anchor.get_text(" ", strip=True))
+            if not title or len(title) > 120:
+                continue
+            seen.add(full_url)
+            jobs.append({
+                "title": title,
+                "company": company_name,
+                "location": "Ghana",
+                "url": full_url,
+                "source": source_name,
+                "description": "",
+                "posted_date": None,
+                "date_is_estimated": True,
+            })
+        logger.info(f"{source_name}: {len(jobs)} jobs")
+    except Exception as e:
+        logger.error(f"{source_name} failed: {e}")
+    return jobs
+
+
+def _fetch_hubtel():
+    return _fetch_generic_careers_page(
+        "https://explore.hubtel.com/careers/",
+        "https://explore.hubtel.com",
+        "hubtel",
+        "Hubtel",
+        lambda href: "/careers/" in href and href.rstrip("/") != "/careers",
+    )
+
+
+def _fetch_turntabl():
+    return _fetch_generic_careers_page(
+        "https://turntabl.io/company/careers",
+        "https://turntabl.io",
+        "turntabl",
+        "Turntabl",
+        lambda href: "/careers/" in href or href.rstrip("/").endswith("/careers/apply"),
+    )
+
+
 def _build_adzuna_queries() -> list:
     fallback = ["software developer", "data analyst", "marketing manager", "financial analyst", "registered nurse"]
     try:
@@ -582,6 +973,19 @@ def fetch_jobs():
         _fetch_corporategh,
         _fetch_arc_ghana,
         _fetch_adzuna,
+        _fetch_canonical,
+        _fetch_turing,
+        _fetch_mkopa,
+        _fetch_amalitech_careers,
+        _fetch_standard_bank_ghana,
+        _fetch_telecel_ghana,
+        _fetch_fido,
+        _fetch_mpharma,
+        _fetch_farmerline,
+        _fetch_mtn_ghana,
+        _fetch_expresspay,
+        _fetch_hubtel,
+        _fetch_turntabl,
     ]
     all_jobs = []
     with ThreadPoolExecutor(max_workers=len(sources)) as executor:
