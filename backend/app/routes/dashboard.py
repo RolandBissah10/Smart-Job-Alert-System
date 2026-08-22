@@ -102,7 +102,13 @@ def get_dashboard(authorization: str = Header(None)):
     return result
 
 
-SCORE_BUCKETS = [("0-39", 0, 40), ("40-59", 40, 60), ("60-79", 60, 80), ("80-100", 80, 101)]
+SCORE_BUCKETS = [
+    ("0-19", 0, 20),
+    ("20-39", 20, 40),
+    ("40-59", 40, 60),
+    ("60-79", 60, 80),
+    ("80-100", 80, 101),
+]
 ALERTS_OVER_TIME_DAYS = 14
 
 

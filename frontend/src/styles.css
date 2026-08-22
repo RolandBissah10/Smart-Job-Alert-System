@@ -1231,13 +1231,28 @@ main.dashboard-main-wrapper {
   text-align: center;
 }
 
-/* Vertical bar chart (Score Distribution, Alerts Over Time) */
+/* Vertical bar chart (Score Distribution) */
+
+.bar-chart-plot {
+  position: relative;
+  height: 180px;
+}
+
+.bar-chart-grid {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--border);
+}
 
 .bar-chart {
+  position: relative;
   display: flex;
   align-items: flex-end;
-  gap: 6px;
-  height: 160px;
+  gap: 14px;
+  height: 100%;
+  padding: 0 8px;
 }
 
 .bar-chart-col {
@@ -1253,7 +1268,7 @@ main.dashboard-main-wrapper {
 .bar-chart-track {
   flex: 1;
   width: 100%;
-  max-width: 28px;
+  max-width: 64px;
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -1264,7 +1279,7 @@ main.dashboard-main-wrapper {
   position: relative;
   width: 100%;
   min-height: 4px;
-  border-radius: 4px 4px 0 0;
+  border-radius: 8px 8px 0 0;
   display: flex;
   justify-content: center;
   padding-top: 4px;
@@ -1281,6 +1296,7 @@ main.dashboard-main-wrapper {
 
 .bar-chart-value {
   color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
   font-size: 0.7rem;
   font-weight: 700;
 }
@@ -1483,7 +1499,7 @@ main.dashboard-main-wrapper {
 }
 
 .donut-chart-center-value {
-  font-size: 1.75rem;
+  font-size: 2rem;
   font-weight: 800;
   fill: var(--text);
 }
@@ -1497,17 +1513,17 @@ main.dashboard-main-wrapper {
 .donut-chart-legend {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   flex: 1;
-  min-width: 140px;
+  min-width: 160px;
 }
 
 .donut-legend-item {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 6px;
-  border-radius: 6px;
+  flex-direction: column;
+  gap: 5px;
+  padding: 6px 8px;
+  border-radius: 8px;
   cursor: pointer;
   transition: background 0.15s ease;
 }
@@ -1517,24 +1533,38 @@ main.dashboard-main-wrapper {
   background: var(--accent);
 }
 
-.donut-legend-swatch {
-  width: 10px;
-  height: 10px;
-  border-radius: 3px;
-  flex-shrink: 0;
+.donut-legend-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .donut-legend-label {
   font-size: 0.8rem;
+  font-weight: 600;
   color: var(--text);
   text-transform: capitalize;
-  flex: 1;
 }
 
 .donut-legend-value {
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   color: var(--text-light);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.donut-legend-track {
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.donut-legend-fill {
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 0.3s ease;
 }
 
 .analytics-hero-stat {
@@ -2829,4 +2859,75 @@ select {
   color: var(--text-light);
   font-size: 0.875rem;
   line-height: 1;
+}
+
+.tracker-board {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+}
+
+.tracker-column {
+  flex: 0 0 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tracker-column-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 4px 4px 8px;
+  border-bottom: 2px solid var(--border);
+  font-weight: 700;
+  color: var(--text);
+}
+
+.tracker-column-count {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-light);
+}
+
+.tracker-column-empty {
+  color: var(--text-light);
+  font-size: 0.85rem;
+  padding: 12px 4px;
+  text-align: center;
+}
+
+.tracker-card {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tracker-card .job-card-header {
+  margin-bottom: 0;
+}
+
+.tracker-card .job-meta-row {
+  margin: 0;
+}
+
+.tracker-status-select {
+  font-weight: 600;
+}
+
+.tracker-notes {
+  resize: vertical;
+  font-family: inherit;
+  min-height: 48px;
+}
+
+.tracker-notes-saving {
+  font-size: 0.75rem;
+  color: var(--text-light);
+}
+
+.tracker-card .job-actions {
+  margin-top: 4px;
 }

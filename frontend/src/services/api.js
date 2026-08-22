@@ -195,3 +195,10 @@ export function unsaveJob(jobId) {
     method: 'DELETE',
   });
 }
+
+export function updateSavedJob(jobId, updates) {
+  return request(`/saved-jobs/${jobId}`, {
+    method: 'PUT',
+    body: JSON.stringify(updates),
+  });
+}

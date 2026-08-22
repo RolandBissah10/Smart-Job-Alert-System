@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard, User, Briefcase, Heart,
+  LayoutDashboard, User, Briefcase, Kanban,
   Bell, BarChart2, LogOut, Menu, X, Sun, Moon,
 } from 'lucide-react';
 import Overview from './dashboard/Overview';
@@ -15,7 +15,7 @@ const NAV_ITEMS = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'profile', label: 'Profile', icon: User },
   { id: 'jobs', label: 'Job Feed', icon: Briefcase },
-  { id: 'saved', label: 'Saved', icon: Heart },
+  { id: 'saved', label: 'Tracker', icon: Kanban },
   { id: 'alerts', label: 'Alerts', icon: Bell },
   { id: 'analytics', label: 'Analytics', icon: BarChart2 },
 ];

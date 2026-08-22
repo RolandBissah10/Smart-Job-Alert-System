@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getSavedJobs } from '../../services/api';
-import JobCard from '../../components/JobCard';
+import TrackerCard, { STATUSES, STATUS_LABELS } from '../../components/TrackerCard';
 import { Heart } from 'lucide-react';
 
 export default function Saved() {
@@ -17,15 +17,20 @@ export default function Saved() {
 
   useEffect(load, []);
 
-  if (loading) return <p className="loading-text">Loading saved jobs...</p>;
+  if (loading) return <p className="loading-text">Loading tracker...</p>;
+
+  const byStatus = (status) =>
+    savedJobs
+      .filter((job) => (job.status || 'saved') === status)
+      .sort((a, b) => new Date(b.saved_at || 0) - new Date(a.saved_at || 0));
 
   return (
     <div>
       <div className="section-header">
         <div>
-          <h2>Saved Jobs</h2>
+          <h2>Application Tracker</h2>
           <p>
-            {savedJobs.length} job{savedJobs.length !== 1 ? 's' : ''} saved
+            {savedJobs.length} job{savedJobs.length !== 1 ? 's' : ''} tracked
           </p>
         </div>
       </div>
@@ -37,15 +42,25 @@ export default function Saved() {
           <p>Browse the Job Feed and save positions you are interested in.</p>
         </div>
       ) : (
-        <div className="jobs-grid">
-          {savedJobs.map((saved, i) => (
-            <JobCard
-              key={saved._id || i}
-              job={{ ...saved, _id: saved.job_id }}
-              isSaved={true}
-              onSaveToggle={load}
-            />
-          ))}
+        <div className="tracker-board">
+          {STATUSES.map((status) => {
+            const jobs = byStatus(status);
+            return (
+              <div key={status} className="tracker-column">
+                <div className="tracker-column-header">
+                  <span>{STATUS_LABELS[status]}</span>
+                  <span className="tracker-column-count">{jobs.length}</span>
+                </div>
+                {jobs.length === 0 ? (
+                  <p className="tracker-column-empty">Nothing here</p>
+                ) : (
+                  jobs.map((job) => (
+                    <TrackerCard key={job.job_id} job={job} onChange={load} />
+                  ))
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

@@ -18,6 +18,16 @@ const SENIORITY_COLORS = [
   'var(--chart-ordinal-7)',
 ];
 
+// Same source ramp as the seniority donut - reused, not reinvented - spread
+// across 5 steps so the score buckets read light-to-dark (low to high match).
+const SCORE_COLORS = [
+  'var(--chart-ordinal-1)',
+  'var(--chart-ordinal-3)',
+  'var(--chart-ordinal-4)',
+  'var(--chart-ordinal-6)',
+  'var(--chart-ordinal-7)',
+];
+
 function formatAlertDate(isoDate) {
   const d = new Date(isoDate);
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
@@ -121,6 +131,7 @@ export default function Analytics({ refreshKey }) {
           </div>
           <BarChart
             data={scoreDistribution}
+            colors={SCORE_COLORS}
             emptyMessage={data?.profile_complete ? 'No matching jobs right now.' : 'Set up your profile or CV to see match scores.'}
           />
         </div>
