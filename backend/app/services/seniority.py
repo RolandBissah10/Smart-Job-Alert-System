@@ -1,5 +1,7 @@
 import re
 
+from app.services.text_utils import normalize as _normalize
+
 LEVEL_ORDER = ["intern", "junior", "mid", "senior", "lead", "manager", "director"]
 
 # Checked in this order; first match wins. More specific/senior terms are listed
@@ -21,10 +23,6 @@ PROFILE_LEVEL_ALIASES = {
     "mid-level": "mid",
     "senior": "senior",
 }
-
-
-def _normalize(text: str) -> str:
-    return (text or "").lower()
 
 
 def classify_seniority_from_title(title: str, description: str = "") -> str | None:

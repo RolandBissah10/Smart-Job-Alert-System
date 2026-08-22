@@ -13,8 +13,6 @@ from app.performance import get_performance_report, perf_monitor
 
 app = FastAPI(title="Smart Job Alert System")
 
-app = FastAPI(title="Smart Job Alert System")
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,

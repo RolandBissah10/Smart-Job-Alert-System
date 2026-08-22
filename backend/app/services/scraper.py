@@ -9,6 +9,7 @@ from app.config import ADZUNA_APP_ID, ADZUNA_APP_KEY
 from app.cache import cache
 from app.services.skills_taxonomy import extract_skills_from_text
 from app.services.seniority import classify_seniority_from_title
+from app.services.text_utils import clean_text as _clean_text
 from datetime import datetime
 from email.utils import parsedate_to_datetime
 from urllib.parse import urljoin
@@ -58,14 +59,6 @@ def enrich_job(job: dict) -> dict:
     job["skills"] = extract_skills_from_text(text)
     job["seniority"] = classify_seniority_from_title(job.get("title", ""), job.get("description", ""))
     return job
-
-
-def _clean_text(value):
-    if isinstance(value, (list, tuple, set)):
-        value = " ".join(str(item) for item in value if item is not None)
-    elif isinstance(value, dict):
-        value = json.dumps(value, ensure_ascii=False)
-    return re.sub(r"\s+", " ", str(value or "")).strip()
 
 
 def _extract_json_ld_jobposting(soup):
@@ -357,6 +350,20 @@ def _fetch_jobicy():
     return jobs
 
 
+def _fetch_detail_pages_parallel(links, source, fallback_location="", max_workers=8):
+    """Fetches each linked detail page concurrently - these are independent HTTP
+    requests, so running them sequentially just adds up N round-trips of latency
+    for no benefit."""
+    jobs = []
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = [executor.submit(_parse_generic_detail, url, source, fallback_location=fallback_location) for url, _ in links]
+        for future in as_completed(futures):
+            job = future.result()
+            if job:
+                jobs.append(job)
+    return jobs
+
+
 def _fetch_jobberman_ghana():
     jobs = []
     try:
@@ -367,10 +374,7 @@ def _fetch_jobberman_ghana():
             lambda href: "/listings/" in href,
             limit=20,
         )
-        for url, _ in links:
-            job = _parse_generic_detail(url, "jobberman_ghana", fallback_location="Ghana")
-            if job:
-                jobs.append(job)
+        jobs = _fetch_detail_pages_parallel(links, "jobberman_ghana", fallback_location="Ghana")
         logger.info(f"Jobberman Ghana: {len(jobs)} jobs")
     except Exception as e:
         logger.error(f"Jobberman Ghana failed: {e}")
@@ -445,10 +449,7 @@ def _fetch_corporategh():
             lambda href: "/jobs/" in href and not href.rstrip("/").endswith("/jobs"),
             limit=20,
         )
-        for url, _ in links:
-            job = _parse_generic_detail(url, "corporategh", fallback_location="Ghana")
-            if job:
-                jobs.append(job)
+        jobs = _fetch_detail_pages_parallel(links, "corporategh", fallback_location="Ghana")
         logger.info(f"CorporateGh: {len(jobs)} jobs")
     except Exception as e:
         logger.error(f"CorporateGh failed: {e}")

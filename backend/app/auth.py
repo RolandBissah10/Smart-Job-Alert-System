@@ -1,5 +1,6 @@
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
+from fastapi import HTTPException
 from app.config import JWT_SECRET, JWT_ALGORITHM
 
 
@@ -29,3 +30,13 @@ def verify_access_token(token: str):
         return payload
     except JWTError:
         return None
+
+
+def require_auth(authorization: str) -> str:
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing or invalid token")
+    token = authorization.split(" ")[1]
+    payload = verify_access_token(token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    return payload["email"]

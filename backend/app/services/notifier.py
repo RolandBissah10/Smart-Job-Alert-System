@@ -4,6 +4,18 @@ from email.mime.text import MIMEText
 from app.config import EMAIL_USER, EMAIL_PASS, EMAIL_FROM, FRONTEND_URL
 
 
+def _require_email_configured():
+    if not EMAIL_USER or not EMAIL_PASS:
+        raise ValueError("EMAIL_USER and EMAIL_PASS must be set in environment variables")
+
+
+def _send_mime_message(msg: MIMEMultipart):
+    with smtplib.SMTP("smtp.gmail.com", 587) as server:
+        server.starttls()
+        server.login(EMAIL_USER, EMAIL_PASS)
+        server.send_message(msg)
+
+
 def _build_html(jobs, alert_name=None):
     count = len(jobs)
     plural = "s" if count != 1 else ""
@@ -163,8 +175,7 @@ def _build_plain(jobs, alert_name=None):
 
 
 def send_email(recipient: str, jobs, alert_name=None):
-    if not EMAIL_USER or not EMAIL_PASS:
-        raise ValueError("EMAIL_USER and EMAIL_PASS must be set in environment variables")
+    _require_email_configured()
 
     count = len(jobs)
     plural = "s" if count != 1 else ""
@@ -178,10 +189,7 @@ def send_email(recipient: str, jobs, alert_name=None):
     msg.attach(MIMEText(_build_plain(jobs, alert_name), "plain", "utf-8"))
     msg.attach(MIMEText(_build_html(jobs, alert_name), "html", "utf-8"))
 
-    with smtplib.SMTP("smtp.gmail.com", 587) as server:
-        server.starttls()
-        server.login(EMAIL_USER, EMAIL_PASS)
-        server.send_message(msg)
+    _send_mime_message(msg)
 
 
 def _build_reset_plain(reset_link):
@@ -250,8 +258,7 @@ def _build_reset_html(reset_link):
 
 
 def send_password_reset_email(recipient: str, reset_link: str):
-    if not EMAIL_USER or not EMAIL_PASS:
-        raise ValueError("EMAIL_USER and EMAIL_PASS must be set in environment variables")
+    _require_email_configured()
 
     msg = MIMEMultipart("alternative")
     msg["Subject"] = "Reset your Smart Job Alert password"
@@ -261,7 +268,4 @@ def send_password_reset_email(recipient: str, reset_link: str):
     msg.attach(MIMEText(_build_reset_plain(reset_link), "plain", "utf-8"))
     msg.attach(MIMEText(_build_reset_html(reset_link), "html", "utf-8"))
 
-    with smtplib.SMTP("smtp.gmail.com", 587) as server:
-        server.starttls()
-        server.login(EMAIL_USER, EMAIL_PASS)
-        server.send_message(msg)
+    _send_mime_message(msg)

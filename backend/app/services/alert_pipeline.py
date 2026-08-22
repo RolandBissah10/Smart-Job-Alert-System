@@ -5,14 +5,12 @@ behavior instead of three independently-maintained copies.
 
 from datetime import datetime
 
-from app.db.database import alert_configs_collection, alerts_collection, jobs_collection
-from app.services.job_filters import build_fresh_jobs_filter
+from app.db.database import alert_configs_collection, alerts_collection
+from app.services.job_filters import fetch_fresh_jobs
 from app.services.matcher import (
     get_matching_jobs_for_profile,
     profile_has_match_criteria,
-    _match_location,
-    _match_job_type,
-    _match_work_authorization,
+    passes_hard_gates,
     normalize,
 )
 from app.services.notifier import send_email
@@ -40,16 +38,6 @@ def _effective_profile(base_profile: dict, criteria: dict) -> dict:
     return profile
 
 
-def _fetch_fresh_jobs(freshness_days, allow_fallback: bool) -> list:
-    if freshness_days is None:
-        return list(jobs_collection.find({}).sort("created_at", -1).limit(500))
-
-    jobs = list(jobs_collection.find(build_fresh_jobs_filter(freshness_days)).sort("created_at", -1).limit(500))
-    if allow_fallback and len(jobs) < MIN_JOBS_BEFORE_FALLBACK:
-        jobs = list(jobs_collection.find(build_fresh_jobs_filter(FALLBACK_FRESHNESS_DAYS)).sort("created_at", -1).limit(500))
-    return jobs
-
-
 def _profile_mode_matches(jobs: list, profile: dict, min_match_score: int) -> list:
     scored = []
     for match in get_matching_jobs_for_profile(jobs, profile):
@@ -70,7 +58,7 @@ def _company_mode_matches(jobs: list, profile: dict, target_companies: list) -> 
     for job in jobs:
         if normalize(job.get("company", "")) not in wanted:
             continue
-        if not _match_location(job, profile) or not _match_job_type(job, profile) or not _match_work_authorization(job, profile):
+        if not passes_hard_gates(job, profile):
             continue
         matches.append({"job": job, "score": 100, "reasons": [f"Target company: {job.get('company', '')}"]})
     return matches
@@ -79,7 +67,7 @@ def _company_mode_matches(jobs: list, profile: dict, target_companies: list) -> 
 def _run_one_alert(user: dict, base_profile: dict, alert_id, alert_name, criteria: dict) -> list:
     freshness_days = criteria.get("freshness_days", 7)
     is_synthetic_default = alert_id is None
-    jobs = _fetch_fresh_jobs(freshness_days, allow_fallback=is_synthetic_default)
+    jobs = fetch_fresh_jobs(freshness_days, allow_fallback=is_synthetic_default)
 
     sent_ids = {
         a["job_id"]

@@ -6,28 +6,18 @@ import logging
 from fastapi import APIRouter, HTTPException, Header, Query
 from app.services.scraper import fetch_jobs, save_jobs
 from app.services.matcher import score_jobs_for_user, profile_has_match_criteria
-from app.services.job_filters import build_fresh_jobs_filter
+from app.services.job_filters import fetch_fresh_jobs
 from app.services.profile_utils import build_match_profile
 from app.services.alert_pipeline import process_user_alerts
 from app.tasks.scheduler import _cleanup_stale_jobs
 from app.db.database import users_collection, jobs_collection
-from app.auth import verify_access_token
+from app.auth import require_auth
 from app.cache import cache
 from app.config import PIPELINE_SECRET
 from app.performance import perf_monitor
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/jobs", tags=["Jobs"])
-
-
-def _require_auth(authorization: str):
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Missing or invalid token")
-    token = authorization.split(" ")[1]
-    payload = verify_access_token(token)
-    if not payload:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    return payload["email"]
 
 
 @router.get("/scrape")
@@ -67,7 +57,7 @@ def get_job_feed(
     page: int = Query(1, ge=1),
     page_size: int = Query(6, ge=1, le=50),
 ):
-    email = _require_auth(authorization)
+    email = require_auth(authorization)
     user = users_collection.find_one({"email": email})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -90,13 +80,9 @@ def get_job_feed(
     jobs_cache_key = f"fresh_jobs:{profile_version}"
     jobs = cache.get(jobs_cache_key)
     if jobs is None:
-        # Show only jobs confirmed active in the last 7 days (last_seen_at refreshed each scrape)
-        # Fall back to last 30 days for sparse DBs or before first pipeline run with new tracking
-        fresh_filter = build_fresh_jobs_filter(7)
-        jobs = list(jobs_collection.find(fresh_filter).sort("created_at", -1).limit(500))
-        if len(jobs) < 10:
-            fresh_filter = build_fresh_jobs_filter(30)
-            jobs = list(jobs_collection.find(fresh_filter).sort("created_at", -1).limit(500))
+        # Show only jobs confirmed active in the last 7 days (last_seen_at refreshed each
+        # scrape), falling back to 30 days for sparse DBs or before first pipeline run.
+        jobs = fetch_fresh_jobs(7)
         cache.set(jobs_cache_key, jobs, 600)  # 10 minutes
 
     # Score jobs; only return those with a positive match score (no random fallback)

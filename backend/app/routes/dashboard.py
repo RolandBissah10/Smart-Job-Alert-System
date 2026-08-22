@@ -2,9 +2,9 @@ from collections import Counter
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, HTTPException, Header
-from app.db.database import users_collection, jobs_collection, alerts_collection, saved_jobs_collection
-from app.auth import verify_access_token
-from app.services.job_filters import build_fresh_jobs_filter
+from app.db.database import users_collection, alerts_collection, saved_jobs_collection
+from app.auth import require_auth
+from app.services.job_filters import fetch_fresh_jobs
 from app.services.matcher import score_jobs_for_user, profile_has_match_criteria
 from app.services.profile_utils import build_match_profile
 from app.services.seniority import LEVEL_ORDER
@@ -13,19 +13,9 @@ from app.cache import cache, cached
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
 
-def _require_auth(authorization: str):
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Missing or invalid token")
-    token = authorization.split(" ")[1]
-    payload = verify_access_token(token)
-    if not payload:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    return payload["email"]
-
-
 @router.get("/")
 def get_dashboard(authorization: str = Header(None)):
-    email = _require_auth(authorization)
+    email = require_auth(authorization)
     user = users_collection.find_one({"email": email}, {"password": 0})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -65,9 +55,7 @@ def get_dashboard(authorization: str = Header(None)):
         jobs_cache_key = f"matching_jobs:{profile_version}"
         fresh_jobs = cache.get(jobs_cache_key)
         if fresh_jobs is None:
-            fresh_jobs = list(jobs_collection.find(build_fresh_jobs_filter(7)).sort("created_at", -1).limit(500))
-            if len(fresh_jobs) < 10:
-                fresh_jobs = list(jobs_collection.find(build_fresh_jobs_filter(30)).sort("created_at", -1).limit(500))
+            fresh_jobs = fetch_fresh_jobs(7)
             cache.set(jobs_cache_key, fresh_jobs, 600)  # 10 minutes
 
         total_jobs = len(score_jobs_for_user(fresh_jobs, profile))
@@ -120,7 +108,7 @@ ALERTS_OVER_TIME_DAYS = 14
 
 @router.get("/analytics")
 def get_analytics(authorization: str = Header(None)):
-    email = _require_auth(authorization)
+    email = require_auth(authorization)
     user = users_collection.find_one({"email": email}, {"password": 0})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -145,9 +133,7 @@ def get_analytics(authorization: str = Header(None)):
         jobs_cache_key = f"matching_jobs:{profile_version}"
         fresh_jobs = cache.get(jobs_cache_key)
         if fresh_jobs is None:
-            fresh_jobs = list(jobs_collection.find(build_fresh_jobs_filter(7)).sort("created_at", -1).limit(500))
-            if len(fresh_jobs) < 10:
-                fresh_jobs = list(jobs_collection.find(build_fresh_jobs_filter(30)).sort("created_at", -1).limit(500))
+            fresh_jobs = fetch_fresh_jobs(7)
             cache.set(jobs_cache_key, fresh_jobs, 600)
 
         scored = score_jobs_for_user(fresh_jobs, profile)

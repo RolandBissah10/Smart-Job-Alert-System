@@ -2,23 +2,13 @@ from fastapi import APIRouter, HTTPException, Header, UploadFile, File, Body
 from app.models.user import UserSignup, UserUpdate, UserProfile
 from app.db.database import users_collection
 from app.auth_utils import hash_password
-from app.auth import verify_access_token
+from app.auth import require_auth
 from app.services.cv_parser import extract_text_from_cv, parse_cv
 from app.services.profile_utils import profile_has_structured_data, get_profile_skills
 from app.services.career_paths import classify_career_paths
 from datetime import datetime
 
 router = APIRouter(prefix="/users", tags=["Users"])
-
-
-def _require_auth(authorization: str):
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Missing or invalid token")
-    token = authorization.split(" ")[1]
-    payload = verify_access_token(token)
-    if not payload:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    return payload["email"]
 
 
 def serialize_user(user):
@@ -58,8 +48,12 @@ def signup(user: UserSignup):
     if existing:
         raise HTTPException(status_code=409, detail="This email is already registered. Please log in or use a different email.")
 
+    username = user.username.strip()
+    if users_collection.find_one({"username": username}):
+        raise HTTPException(status_code=409, detail="This username is already taken. Please choose a different one.")
+
     user_record = {
-        "username": user.username.strip(),
+        "username": username,
         "email": user.email,
         "password": hash_password(user.password),
         "profile": {},
@@ -76,7 +70,7 @@ def signup(user: UserSignup):
 
 @router.get("/me")
 def get_me(authorization: str = Header(None)):
-    email = _require_auth(authorization)
+    email = require_auth(authorization)
     user = users_collection.find_one({"email": email}, {"password": 0})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -85,7 +79,7 @@ def get_me(authorization: str = Header(None)):
 
 @router.put("/profile")
 def update_profile(profile: UserProfile, authorization: str = Header(None)):
-    email = _require_auth(authorization)
+    email = require_auth(authorization)
     user = users_collection.find_one({"email": email})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -104,7 +98,7 @@ def update_profile(profile: UserProfile, authorization: str = Header(None)):
 
 @router.post("/cv")
 async def upload_cv(file: UploadFile = File(...), authorization: str = Header(None)):
-    email = _require_auth(authorization)
+    email = require_auth(authorization)
     user = users_collection.find_one({"email": email})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -176,7 +170,7 @@ async def upload_cv(file: UploadFile = File(...), authorization: str = Header(No
 
 @router.delete("/cv")
 def delete_cv(authorization: str = Header(None)):
-    email = _require_auth(authorization)
+    email = require_auth(authorization)
     user = users_collection.find_one({"email": email})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -200,7 +194,7 @@ def delete_cv(authorization: str = Header(None)):
 
 @router.put("/match-source")
 def update_match_source(body: dict = Body(...), authorization: str = Header(None)):
-    email = _require_auth(authorization)
+    email = require_auth(authorization)
     user = users_collection.find_one({"email": email})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -235,7 +229,7 @@ def update_match_source(body: dict = Body(...), authorization: str = Header(None
 
 @router.delete("/profile")
 def reset_profile(authorization: str = Header(None)):
-    email = _require_auth(authorization)
+    email = require_auth(authorization)
     user = users_collection.find_one({"email": email})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")

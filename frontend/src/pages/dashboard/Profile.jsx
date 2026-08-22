@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { getMe, updateProfile, resetProfile, uploadCv, deleteCv, updateMatchSource } from '../../services/api';
 import { CheckCircle, ChevronRight, ChevronLeft, ChevronDown } from 'lucide-react';
 import useCompanySearch from '../../hooks/useCompanySearch';
+import ChipInput from '../../components/ChipInput';
 
 const INDUSTRIES = [
   { value: 'technology', label: 'Technology & Software' },
@@ -244,9 +245,7 @@ export default function Profile({ onProfileChange }) {
   const [yearsExperience, setYearsExperience] = useState('');
   const [education, setEducation] = useState([]);
   const [certifications, setCertifications] = useState([]);
-  const [customCertInput, setCustomCertInput] = useState('');
   const [projects, setProjects] = useState([]);
-  const [customProjectInput, setCustomProjectInput] = useState('');
   const [salaryExpectation, setSalaryExpectation] = useState('');
   const [workAuthorization, setWorkAuthorization] = useState('');
   const [targetCompanies, setTargetCompanies] = useState([]);
@@ -445,28 +444,6 @@ export default function Profile({ onProfileChange }) {
 
   const removeEducationEntry = (index) => {
     setEducation((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const addCustomCert = () => {
-    const value = customCertInput.trim();
-    if (!value || certifications.includes(value)) return;
-    setCertifications((prev) => [...prev, value]);
-    setCustomCertInput('');
-  };
-
-  const removeCert = (cert) => {
-    setCertifications((prev) => prev.filter((c) => c !== cert));
-  };
-
-  const addCustomProject = () => {
-    const value = customProjectInput.trim();
-    if (!value || projects.includes(value)) return;
-    setProjects((prev) => [...prev, value]);
-    setCustomProjectInput('');
-  };
-
-  const removeProject = (project) => {
-    setProjects((prev) => prev.filter((p) => p !== project));
   };
 
   const addTargetCompany = (nameOverride) => {
@@ -1028,57 +1005,21 @@ export default function Profile({ onProfileChange }) {
               </button>
             </div>
 
-            <div className="profile-section">
-              <label className="profile-label">Certifications</label>
-              <div className="chip-grid">
-                {certifications.map((cert) => (
-                  <button key={cert} type="button" className="chip selected chip-custom" onClick={() => removeCert(cert)}>
-                    {cert} &times;
-                  </button>
-                ))}
-              </div>
-              <div className="custom-tech-row">
-                <input
-                  type="text"
-                  className="profile-input"
-                  placeholder="e.g. PMP, AWS Certified Solutions Architect - press Enter"
-                  value={customCertInput}
-                  onChange={(e) => setCustomCertInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') { e.preventDefault(); addCustomCert(); }
-                  }}
-                />
-                <button type="button" className="button" onClick={addCustomCert}>
-                  Add
-                </button>
-              </div>
-            </div>
+            <ChipInput
+              label="Certifications"
+              values={certifications}
+              placeholder="e.g. PMP, AWS Certified Solutions Architect - press Enter"
+              onAdd={(v) => setCertifications((prev) => [...prev, v])}
+              onRemove={(v) => setCertifications((prev) => prev.filter((c) => c !== v))}
+            />
 
-            <div className="profile-section">
-              <label className="profile-label">Projects</label>
-              <div className="chip-grid">
-                {projects.map((project) => (
-                  <button key={project} type="button" className="chip selected chip-custom" onClick={() => removeProject(project)}>
-                    {project} &times;
-                  </button>
-                ))}
-              </div>
-              <div className="custom-tech-row">
-                <input
-                  type="text"
-                  className="profile-input"
-                  placeholder="Briefly name a project - press Enter"
-                  value={customProjectInput}
-                  onChange={(e) => setCustomProjectInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') { e.preventDefault(); addCustomProject(); }
-                  }}
-                />
-                <button type="button" className="button" onClick={addCustomProject}>
-                  Add
-                </button>
-              </div>
-            </div>
+            <ChipInput
+              label="Projects"
+              values={projects}
+              placeholder="Briefly name a project - press Enter"
+              onAdd={(v) => setProjects((prev) => [...prev, v])}
+              onRemove={(v) => setProjects((prev) => prev.filter((p) => p !== v))}
+            />
 
             <div className="profile-section">
               <label className="profile-label">Salary Expectation</label>

@@ -1,10 +1,11 @@
 """Multi-dimensional match scoring, layered on top of matcher.py's existing
-hard-gate inclusion logic (_match_location, _match_job_type, _job_matches_profile).
-This module is purely about ranking/explaining jobs that already passed those
-gates - it does not decide inclusion.
+hard-gate inclusion logic (passes_hard_gates, _job_matches_profile). This module
+is purely about ranking/explaining jobs that already passed those gates - it
+does not decide inclusion.
 """
 
-from app.services.profile_utils import get_profile_skills
+from app.services.profile_utils import get_profile_skills, cached_on_profile
+from app.services.text_utils import normalize as _normalize
 from app.services.seniority import (
     classify_seniority_from_title,
     classify_seniority_from_years,
@@ -37,14 +38,13 @@ NEUTRAL_SCORE = 60
 QUALITY_SCORES = {"excellent": 100, "good": 75, "poor": 35, "unknown": NEUTRAL_SCORE}
 
 
-def _normalize(text: str) -> str:
-    return (text or "").lower().strip()
-
-
 def _candidate_skill_set(profile: dict) -> set:
-    skills = {s.lower() for s in (get_profile_skills(profile) or [])}
-    skills |= {s.lower() for s in (profile.get("cv_skills") or [])}
-    return skills
+    def compute():
+        skills = {s.lower() for s in (get_profile_skills(profile) or [])}
+        skills |= {s.lower() for s in (profile.get("cv_skills") or [])}
+        return skills
+
+    return cached_on_profile(profile, "scoring_candidate_skills", compute)
 
 
 def score_skills_dimension(job: dict, profile: dict) -> dict:
@@ -131,22 +131,22 @@ def score_education_dimension(job: dict, profile: dict) -> dict:
 
 
 def score_location_dimension(job: dict, profile: dict) -> dict:
-    from app.services.matcher import _match_location
+    from app.services.matcher import match_location
 
-    if _match_location(job, profile):
+    if match_location(job, profile):
         return {"score": 100, "explanation": "Meets your location preference."}
     return {"score": 0, "explanation": "Does not meet your location preference."}
 
 
 def score_role_dimension(job: dict, profile: dict) -> dict:
-    from app.services.matcher import _get_profile_roles, _count_keyword_hits, normalize
+    from app.services.matcher import get_profile_roles, count_keyword_hits
 
-    roles = _get_profile_roles(profile)
+    roles = get_profile_roles(profile)
     if not roles:
         return {"score": NEUTRAL_SCORE, "matched": [], "explanation": "No preferred roles set."}
 
-    title_hits = _count_keyword_hits(normalize(job.get("title", "")), roles)
-    description_hits = _count_keyword_hits(normalize(job.get("description", "")), roles)
+    title_hits = count_keyword_hits(_normalize(job.get("title", "")), roles)
+    description_hits = count_keyword_hits(_normalize(job.get("description", "")), roles)
     hits = list(dict.fromkeys(title_hits + description_hits))
 
     if title_hits:

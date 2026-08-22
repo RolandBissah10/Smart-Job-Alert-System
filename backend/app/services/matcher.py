@@ -1,12 +1,9 @@
 import re
 
-from app.services.profile_utils import get_profile_skills
+from app.services.profile_utils import get_profile_skills, cached_on_profile
 from app.services.role_synonyms import expand_roles
 from app.services.scoring import compute_match
-
-
-def normalize(text: str) -> str:
-    return text.lower().strip() if text else ""
+from app.services.text_utils import normalize
 
 
 def get_match_source(profile: dict) -> str:
@@ -32,7 +29,7 @@ def _get_keywords_from_profile(profile: dict) -> list:
 
     if match_source in {"profile", "both"}:
         keywords.extend(get_profile_skills(profile))
-        keywords.extend(_get_profile_roles(profile))
+        keywords.extend(get_profile_roles(profile))
         industry = profile.get("industry", "")
         if industry:
             keywords.append(industry.replace("_", " "))
@@ -45,13 +42,13 @@ def _get_keywords_from_profile(profile: dict) -> list:
 def _get_profile_skills(profile: dict) -> list:
     if get_match_source(profile) == "cv":
         return []
-    return get_profile_skills(profile)
+    return cached_on_profile(profile, "matcher_skills", lambda: get_profile_skills(profile))
 
 
-def _get_profile_roles(profile: dict) -> list:
+def get_profile_roles(profile: dict) -> list:
     if get_match_source(profile) == "cv":
         return []
-    return expand_roles(profile.get("roles", []))
+    return cached_on_profile(profile, "matcher_roles", lambda: expand_roles(profile.get("roles", [])))
 
 
 def _get_profile_industry_terms(profile: dict) -> list:
@@ -69,7 +66,7 @@ def _get_cv_keywords(profile: dict) -> list:
     return profile.get("cv_keywords", [])
 
 
-def _match_location(job: dict, profile: dict) -> bool:
+def match_location(job: dict, profile: dict) -> bool:
     preferred = normalize(profile.get("location", ""))
     if not preferred or preferred == "remote":
         return True
@@ -151,7 +148,7 @@ def _match_work_authorization(job: dict, profile: dict) -> bool:
     return not _candidate_needs_sponsorship(profile)
 
 
-def _count_keyword_hits(text: str, keywords: list) -> list:
+def count_keyword_hits(text: str, keywords: list) -> list:
     hits = []
     for keyword in keywords:
         term = normalize(keyword)
@@ -160,30 +157,37 @@ def _count_keyword_hits(text: str, keywords: list) -> list:
     return list(dict.fromkeys(hits))
 
 
-def _job_matches_profile(job: dict, profile: dict, title_hits: list, description_hits: list) -> bool:
-    if (
-        not _match_location(job, profile)
-        or not _match_job_type(job, profile)
-        or not _match_work_authorization(job, profile)
-    ):
+def passes_hard_gates(job: dict, profile: dict) -> bool:
+    """Location/job-type/work-authorization eligibility - independent of keyword
+    scoring. A job that fails any of these is excluded regardless of how well its
+    title/description text matches, so this is checked before any keyword work."""
+    return (
+        match_location(job, profile)
+        and _match_job_type(job, profile)
+        and _match_work_authorization(job, profile)
+    )
+
+
+def _job_matches_profile(job: dict, profile: dict) -> bool:
+    if not passes_hard_gates(job, profile):
         return False
 
     title = normalize(job.get("title", ""))
     description = normalize(job.get("description", ""))
     skills = _get_profile_skills(profile)
-    roles = _get_profile_roles(profile)
+    roles = get_profile_roles(profile)
     industry_terms = _get_profile_industry_terms(profile)
     cv_keywords = _get_cv_keywords(profile)
     match_source = get_match_source(profile)
 
-    role_title_hits = _count_keyword_hits(title, roles)
-    role_description_hits = _count_keyword_hits(description, roles)
-    skill_title_hits = _count_keyword_hits(title, skills)
-    skill_description_hits = _count_keyword_hits(description, skills)
-    industry_title_hits = _count_keyword_hits(title, industry_terms)
-    industry_description_hits = _count_keyword_hits(description, industry_terms)
-    cv_title_hits = _count_keyword_hits(title, cv_keywords)
-    cv_description_hits = _count_keyword_hits(description, cv_keywords)
+    role_title_hits = count_keyword_hits(title, roles)
+    role_description_hits = count_keyword_hits(description, roles)
+    skill_title_hits = count_keyword_hits(title, skills)
+    skill_description_hits = count_keyword_hits(description, skills)
+    industry_title_hits = count_keyword_hits(title, industry_terms)
+    industry_description_hits = count_keyword_hits(description, industry_terms)
+    cv_title_hits = count_keyword_hits(title, cv_keywords)
+    cv_description_hits = count_keyword_hits(description, cv_keywords)
 
     non_industry_hits = list(dict.fromkeys(
         role_title_hits + role_description_hits + skill_title_hits + skill_description_hits
@@ -254,9 +258,7 @@ def get_matching_jobs_for_profile(jobs, profile: dict):
     matched = []
     for job in jobs:
         score, reasons = match_score_with_reasons(job, keywords)
-        title_hits = _count_keyword_hits(normalize(job.get("title", "")), keywords)
-        description_hits = _count_keyword_hits(normalize(job.get("description", "")), keywords)
-        if score <= 0 or not _job_matches_profile(job, profile, title_hits, description_hits):
+        if score <= 0 or not _job_matches_profile(job, profile):
             continue
         non_industry_reasons = [
             reason for reason in reasons

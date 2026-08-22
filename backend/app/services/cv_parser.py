@@ -4,6 +4,7 @@ from datetime import datetime
 
 from app.services.skills_taxonomy import extract_skills_from_text, extract_certifications_from_text
 from app.services.seniority import classify_seniority_from_years, classify_seniority_from_title
+from app.services.text_utils import clean_text as _clean_text
 
 
 STOPWORDS = {
@@ -13,10 +14,6 @@ STOPWORDS = {
     "professional", "summary", "profile", "email", "phone", "address", "references",
     "education", "projects", "employment", "career",
 }
-
-
-def _clean_text(text: str) -> str:
-    return re.sub(r"\s+", " ", text or "").strip()
 
 
 def extract_text_from_cv(filename: str, content: bytes) -> str:

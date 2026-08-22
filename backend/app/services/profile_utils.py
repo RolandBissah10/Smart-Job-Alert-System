@@ -10,6 +10,22 @@ def profile_has_structured_data(profile: dict) -> bool:
     return bool(get_profile_skills(profile) or profile.get("roles"))
 
 
+_CACHE_ATTR = "_derived_cache"
+
+
+def cached_on_profile(profile: dict, key: str, compute):
+    """Memoizes a profile-only derived value (skills set, expanded roles, etc.)
+    on the profile dict itself. Safe because build_match_profile() builds a
+    fresh dict once per request - the cache never outlives that request."""
+    cache = profile.get(_CACHE_ATTR)
+    if cache is None:
+        cache = {}
+        profile[_CACHE_ATTR] = cache
+    if key not in cache:
+        cache[key] = compute()
+    return cache[key]
+
+
 def build_match_profile(user: dict) -> dict:
     """Single source of truth for turning a user document into the profile dict
     the matcher expects: the raw profile plus match_source and cv-derived fields
