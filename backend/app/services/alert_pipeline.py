@@ -1,6 +1,6 @@
-"""Shared alert-processing logic used by the scheduler, the manual pipeline
-route, and the Celery task - so all three run identical matching/sending
-behavior instead of three independently-maintained copies.
+"""Shared alert-processing logic used by /jobs/run-pipeline, which the GitHub
+Actions cron workflow (and manual dispatch) calls to scrape jobs and send
+matching-job alert emails to every active user.
 """
 
 from datetime import datetime
