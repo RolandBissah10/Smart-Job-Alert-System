@@ -4,7 +4,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from app.routes import users, auth, jobs, saved_jobs, dashboard, alerts
-from app.tasks.scheduler import scheduler, run_job_pipeline
+from app.tasks.scheduler import run_job_pipeline
 from app.services.notifier import send_email
 from app.services.matcher import _get_keywords_from_profile, match_score
 from app.db.database import users_collection, jobs_collection, alerts_collection
@@ -37,17 +37,6 @@ async def global_exception_handler(request: Request, exc: Exception):
         status_code=500,
         content={"detail": f"Internal server error: {str(exc)}"},
     )
-
-
-@app.on_event("startup")
-def startup_event():
-    if not scheduler.running:
-        scheduler.start()
-
-
-@app.on_event("shutdown")
-def shutdown_event():
-    scheduler.shutdown()
 
 
 @app.get("/")

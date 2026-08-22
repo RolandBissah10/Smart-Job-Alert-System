@@ -1,17 +1,13 @@
-from apscheduler.schedulers.background import BackgroundScheduler
 from datetime import datetime, timedelta
 import logging
 import time
 
-from app.config import SCHEDULER_INTERVAL_MINUTES
 from app.db.database import jobs_collection, saved_jobs_collection, users_collection
 from app.services.alert_pipeline import process_user_alerts
 from app.services.scraper import fetch_jobs, save_jobs
 from app.performance import perf_monitor
 
 logger = logging.getLogger(__name__)
-
-scheduler = BackgroundScheduler()
 
 
 def _cleanup_stale_jobs():
@@ -73,12 +69,3 @@ def run_job_pipeline():
     elapsed = time.perf_counter() - start
     logger.info(f"Pipeline done. Digest emails sent: {total_sent} in {elapsed:.2f}s")
     perf_monitor.record_pipeline_time(elapsed, source="scheduler")
-
-
-scheduler.add_job(
-    run_job_pipeline,
-    "interval",
-    minutes=SCHEDULER_INTERVAL_MINUTES,
-    id="run-job-pipeline",
-    replace_existing=True,
-)

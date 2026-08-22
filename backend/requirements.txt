@@ -8,7 +8,6 @@ requests
 passlib[bcrypt]
 bcrypt>=4.0.1,<6
 python-jose[cryptography]
-apscheduler
 pydantic[email]
 python-multipart
 pypdf

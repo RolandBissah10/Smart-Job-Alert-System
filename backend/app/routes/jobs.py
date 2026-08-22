@@ -1,3 +1,4 @@
+import hmac
 import time
 import re
 import logging
@@ -8,9 +9,11 @@ from app.services.matcher import score_jobs_for_user, profile_has_match_criteria
 from app.services.job_filters import build_fresh_jobs_filter
 from app.services.profile_utils import build_match_profile
 from app.services.alert_pipeline import process_user_alerts
+from app.tasks.scheduler import _cleanup_stale_jobs
 from app.db.database import users_collection, jobs_collection
 from app.auth import verify_access_token
 from app.cache import cache
+from app.config import PIPELINE_SECRET
 from app.performance import perf_monitor
 
 logger = logging.getLogger(__name__)
@@ -112,8 +115,18 @@ def get_job_feed(
 
 
 @router.post("/run-pipeline")
-def run_pipeline():
+def run_pipeline(x_pipeline_secret: str = Header(None)):
+    # If PIPELINE_SECRET isn't configured (e.g. local dev), stay open exactly as
+    # before - only enforce the check once a real secret is actually set.
+    if PIPELINE_SECRET and not hmac.compare_digest(x_pipeline_secret or "", PIPELINE_SECRET):
+        raise HTTPException(status_code=401, detail="Invalid or missing pipeline secret")
+
     start = time.perf_counter()
+    try:
+        _cleanup_stale_jobs()
+    except Exception as e:
+        logger.error(f"Cleanup error: {e}")
+
     jobs = fetch_jobs()
     new_jobs = save_jobs(jobs)
     active_users = list(users_collection.find({"is_active": True}))
