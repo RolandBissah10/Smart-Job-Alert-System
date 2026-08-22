@@ -15,6 +15,18 @@
   --radius: 12px;
   --radius-lg: 16px;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  /* Ordinal blue ramp for the seniority-mix chart (intern -> director) - these
+     7 steps sit within the range that clears 2:1 contrast on both a light and
+     a dark chart surface, so the same values are valid in both themes without
+     a separate dark override. */
+  --chart-ordinal-1: #86b6ef;
+  --chart-ordinal-2: #6da7ec;
+  --chart-ordinal-3: #5598e7;
+  --chart-ordinal-4: #3987e5;
+  --chart-ordinal-5: #2a78d6;
+  --chart-ordinal-6: #256abf;
+  --chart-ordinal-7: #1c5cab;
 }
 
 [data-theme="dark"] {
@@ -1181,6 +1193,159 @@ main.dashboard-main-wrapper {
   font-size: 0.85rem;
   color: var(--text-light);
   font-weight: 500;
+}
+
+/* ==================== ANALYTICS CHARTS ==================== */
+
+.analytics-charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+.analytics-chart-card {
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: var(--shadow);
+}
+
+.analytics-chart-card h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.analytics-chart-subtitle {
+  font-size: 0.85rem;
+  color: var(--text-light);
+  margin-bottom: 20px;
+}
+
+.chart-empty {
+  color: var(--text-light);
+  font-size: 0.9rem;
+  padding: 32px 0;
+  text-align: center;
+}
+
+/* Vertical bar chart (Score Distribution, Alerts Over Time) */
+
+.bar-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 160px;
+}
+
+.bar-chart-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  height: 100%;
+  min-width: 0;
+}
+
+.bar-chart-track {
+  flex: 1;
+  width: 100%;
+  max-width: 28px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  border-bottom: 1px solid var(--border);
+}
+
+.bar-chart-fill {
+  width: 100%;
+  min-height: 4px;
+  border-radius: 4px 4px 0 0;
+  display: flex;
+  justify-content: center;
+  padding-top: 4px;
+  transition: height 0.3s ease;
+}
+
+.bar-chart-value {
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.bar-chart-label {
+  font-size: 0.72rem;
+  color: var(--text-light);
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* Horizontal ranked bar list (Top Skills, Seniority Mix) */
+
+.hbar-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.hbar-row {
+  display: grid;
+  grid-template-columns: 96px 1fr 32px;
+  align-items: center;
+  gap: 10px;
+}
+
+.hbar-label {
+  font-size: 0.82rem;
+  color: var(--text);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: capitalize;
+}
+
+.hbar-track {
+  height: 16px;
+  background: var(--accent);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.hbar-fill {
+  height: 100%;
+  border-radius: 0 4px 4px 0;
+  min-width: 3px;
+  transition: width 0.3s ease;
+}
+
+.hbar-value {
+  font-size: 0.8rem;
+  color: var(--text-light);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.analytics-hero-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 24px;
+}
+
+.analytics-hero-value {
+  font-size: 3rem;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1;
+}
+
+.analytics-hero-label {
+  font-size: 0.9rem;
+  color: var(--text-light);
 }
 
 /* ==================== PROFILE PROMPT ==================== */

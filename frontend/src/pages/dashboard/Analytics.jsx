@@ -1,8 +1,25 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getDashboard } from '../../services/api';
-import { BarChart2, TrendingUp, Target, Zap, RefreshCw } from 'lucide-react';
+import { getAnalytics } from '../../services/api';
+import { RefreshCw } from 'lucide-react';
+import BarChart from '../../components/charts/BarChart';
+import HorizontalBarList from '../../components/charts/HorizontalBarList';
 
 const REFRESH_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
+
+const SENIORITY_COLORS = [
+  'var(--chart-ordinal-1)',
+  'var(--chart-ordinal-2)',
+  'var(--chart-ordinal-3)',
+  'var(--chart-ordinal-4)',
+  'var(--chart-ordinal-5)',
+  'var(--chart-ordinal-6)',
+  'var(--chart-ordinal-7)',
+];
+
+function formatAlertDate(isoDate) {
+  const d = new Date(isoDate);
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
 
 export default function Analytics({ refreshKey }) {
   const [data, setData] = useState(null);
@@ -12,7 +29,7 @@ export default function Analytics({ refreshKey }) {
 
   const load = useCallback((isManual = false) => {
     if (isManual) setRefreshing(true);
-    getDashboard()
+    getAnalytics()
       .then((d) => {
         setData(d);
         setLastUpdated(new Date());
@@ -32,24 +49,22 @@ export default function Analytics({ refreshKey }) {
 
   if (loading) return <p className="loading-text">Loading analytics...</p>;
 
-  const profile = data?.profile || {};
-  const hasMatchInput = !!(
-    profile.skills?.length ||
-    profile.tech_stack?.length ||
-    profile.roles?.length ||
-    data?.cv_uploaded
-  );
-
   const updatedLabel = lastUpdated
     ? lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     : '';
+
+  const scoreDistribution = (data?.score_distribution || []).map((b) => ({ label: b.label, value: b.count }));
+  const topSkills = (data?.top_skills || []).map((s) => ({ label: s.skill, value: s.count }));
+  const seniorityMix = (data?.seniority_mix || []).map((s) => ({ label: s.level, value: s.count }));
+  const alertsOverTime = (data?.alerts_over_time || []).map((a) => ({ label: formatAlertDate(a.date), value: a.count }));
+  const hasAnyAlerts = alertsOverTime.some((a) => a.value > 0);
 
   return (
     <div>
       <div className="section-header">
         <div>
           <h2>Analytics</h2>
-          <p>Your activity and match insights</p>
+          <p>Trends and breakdowns behind your matches - not a repeat of the Overview numbers</p>
         </div>
         <div className="section-header-actions">
           {updatedLabel && (
@@ -66,93 +81,62 @@ export default function Analytics({ refreshKey }) {
         </div>
       </div>
 
-      <div className="analytics-body">
-        <div className="stats-grid">
-          <div className="stat-card">
-            <div className="stat-icon"><BarChart2 size={24} /></div>
-            <div className="stat-info">
-              <span className="stat-value">{data?.stats?.total_jobs ?? 0}</span>
-              <span className="stat-label">Jobs Available</span>
-            </div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-icon"><Target size={24} /></div>
-            <div className="stat-info">
-              <span className="stat-value">{data?.stats?.alerts_sent ?? 0}</span>
-              <span className="stat-label">Alerts Sent</span>
-            </div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-icon"><TrendingUp size={24} /></div>
-            <div className="stat-info">
-              <span className="stat-value">{data?.stats?.saved_jobs ?? 0}</span>
-              <span className="stat-label">Jobs Saved</span>
-            </div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-icon"><Zap size={24} /></div>
-            <div className="stat-info">
-              <span className="stat-value stat-value-sm">{hasMatchInput ? 'Active' : 'Inactive'}</span>
-              <span className="stat-label">Matching</span>
-            </div>
-          </div>
+      {!data?.profile_complete && (
+        <p className="alert alert-info" style={{ marginBottom: 24 }}>
+          Set up your profile or upload a CV to see match-quality analytics (skills, score, seniority mix).
+          Alert history below still works either way.
+        </p>
+      )}
+
+      {data?.profile_complete && (
+        <div className="analytics-hero-stat">
+          <span className="analytics-hero-value">{data.average_score}%</span>
+          <span className="analytics-hero-label">Average match score across your current job feed</span>
+        </div>
+      )}
+
+      <div className="analytics-charts-grid">
+        <div className="analytics-chart-card">
+          <h3>Match Score Distribution</h3>
+          <p className="analytics-chart-subtitle">How your current matching jobs score, bucketed</p>
+          <BarChart
+            data={scoreDistribution}
+            emptyMessage={data?.profile_complete ? 'No matching jobs right now.' : 'Set up your profile or CV to see match scores.'}
+          />
         </div>
 
-        {hasMatchInput && (
-          <div className="analytics-profile-summary">
-            <h3>Your Profile Summary</h3>
-            {data?.match_source && (
-              <div className="profile-summary-row">
-                <span className="summary-label">Match Source</span>
-                <span className="chip selected readonly">{data.match_source}</span>
-              </div>
-            )}
-            {profile.tech_stack?.length > 0 && (
-              <div className="profile-summary-row">
-                <span className="summary-label">Tech Stack</span>
-                <div className="chip-grid small">
-                  {profile.tech_stack.map((t) => (
-                    <span key={t} className="chip selected readonly">{t}</span>
-                  ))}
-                </div>
-              </div>
-            )}
-            {profile.roles?.length > 0 && (
-              <div className="profile-summary-row">
-                <span className="summary-label">Roles</span>
-                <div className="chip-grid small">
-                  {profile.roles.map((r) => (
-                    <span key={r} className="chip selected readonly">{r}</span>
-                  ))}
-                </div>
-              </div>
-            )}
-            {profile.experience_level && (
-              <div className="profile-summary-row">
-                <span className="summary-label">Experience</span>
-                <span className="chip selected readonly">{profile.experience_level}</span>
-              </div>
-            )}
-            {profile.location && (
-              <div className="profile-summary-row">
-                <span className="summary-label">Location</span>
-                <span>{profile.location}</span>
-              </div>
-            )}
-            {profile.job_type && (
-              <div className="profile-summary-row">
-                <span className="summary-label">Job Type</span>
-                <span>{profile.job_type}</span>
-              </div>
-            )}
-          </div>
-        )}
+        <div className="analytics-chart-card">
+          <h3>Top Skills in Demand</h3>
+          <p className="analytics-chart-subtitle">Most frequent skills across your matching jobs</p>
+          <HorizontalBarList
+            data={topSkills}
+            emptyMessage={data?.profile_complete ? 'No skills found in your current matches yet.' : 'Set up your profile or CV to see this.'}
+          />
+        </div>
 
-        {!hasMatchInput && (
-          <div className="empty-state" style={{ paddingTop: 32 }}>
-            <p>Set up your profile or upload a CV to see personalized analytics and match data.</p>
-          </div>
-        )}
+        <div className="analytics-chart-card">
+          <h3>Seniority Mix of Your Matches</h3>
+          <p className="analytics-chart-subtitle">Experience level of jobs matching your profile, intern to director</p>
+          <HorizontalBarList
+            data={seniorityMix}
+            colors={SENIORITY_COLORS}
+            emptyMessage={data?.profile_complete ? 'No seniority data in your current matches yet.' : 'Set up your profile or CV to see this.'}
+          />
+        </div>
+
+        <div className="analytics-chart-card">
+          <h3>Alerts Sent (Last 14 Days)</h3>
+          <p className="analytics-chart-subtitle">How many job alerts you've received per day</p>
+          <BarChart
+            data={alertsOverTime}
+            emptyMessage="No alerts sent in the last 14 days."
+          />
+          {!hasAnyAlerts && data?.profile_complete && (
+            <p className="analytics-chart-subtitle" style={{ marginTop: 8, marginBottom: 0 }}>
+              Run the pipeline or wait for the next scheduled run to start receiving alerts.
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );

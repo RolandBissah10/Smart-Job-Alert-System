@@ -133,6 +133,10 @@ export function getDashboard() {
   return request('/dashboard/');
 }
 
+export function getAnalytics() {
+  return request('/dashboard/analytics');
+}
+
 export function getAlerts() {
   return request('/alerts/');
 }
