@@ -4,6 +4,8 @@ import { CheckCircle, ChevronRight, ChevronLeft, ChevronDown } from 'lucide-reac
 import useCompanySearch from '../../hooks/useCompanySearch';
 import ChipInput from '../../components/ChipInput';
 
+const COMPANIES_PER_PAGE = 5;
+
 const INDUSTRIES = [
   { value: 'technology', label: 'Technology & Software' },
   { value: 'healthcare', label: 'Healthcare & Medicine' },
@@ -249,6 +251,7 @@ export default function Profile({ onProfileChange }) {
   const [salaryExpectation, setSalaryExpectation] = useState('');
   const [workAuthorization, setWorkAuthorization] = useState('');
   const [targetCompanies, setTargetCompanies] = useState([]);
+  const [companyPage, setCompanyPage] = useState(0);
   const [customCompanyInput, setCustomCompanyInput] = useState('');
   const [showCompanySuggestions, setShowCompanySuggestions] = useState(false);
   const [careerPaths, setCareerPaths] = useState([]);
@@ -718,18 +721,15 @@ export default function Profile({ onProfileChange }) {
 
         <div className="wizard-steps">
           {[1, 2, 3, 4, 5].map((n) => (
-            <button
-              key={n}
-              className={`wizard-step ${step === n ? 'active' : ''} ${stepCompleted[n] ? 'done' : ''}`}
-              onClick={() => setStep(n)}
-            >
-              {stepCompleted[n] ? <CheckCircle size={16} /> : n}
-            </button>
-          ))}
-        </div>
-        <div className="wizard-step-labels">
-          {stepTitles.map((label, index) => (
-            <span key={label} className={step === index + 1 ? 'active' : ''}>{label}</span>
+            <div key={n} className="wizard-step-col">
+              <button
+                className={`wizard-step ${step === n ? 'active' : ''} ${stepCompleted[n] ? 'done' : ''}`}
+                onClick={() => setStep(n)}
+              >
+                {stepCompleted[n] ? <CheckCircle size={16} /> : n}
+              </button>
+              <span className={`wizard-step-label ${step === n ? 'active' : ''}`}>{stepTitles[n - 1]}</span>
+            </div>
           ))}
         </div>
       </div>
@@ -1051,25 +1051,58 @@ export default function Profile({ onProfileChange }) {
               <p className="profile-panel-text" style={{ marginBottom: 8 }}>
                 Jobs at these companies get a ranking boost in your feed - bigger for higher-priority tiers.
               </p>
-              {targetCompanies.map((company) => (
-                <div key={company.name} className="custom-tech-row" style={{ marginBottom: 8 }}>
-                  <span className="chip selected chip-custom" style={{ flex: '0 0 auto' }}>
-                    {company.name}
-                  </span>
-                  <select
-                    className="profile-input profile-select"
-                    value={company.tier || 'preferred'}
-                    onChange={(e) => updateTargetCompanyTier(company.name, e.target.value)}
-                  >
-                    {COMPANY_TIER_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+              {(() => {
+                const totalPages = Math.max(1, Math.ceil(targetCompanies.length / COMPANIES_PER_PAGE));
+                const currentPage = Math.min(companyPage, totalPages - 1);
+                const pageStart = currentPage * COMPANIES_PER_PAGE;
+                const pagedCompanies = targetCompanies.slice(pageStart, pageStart + COMPANIES_PER_PAGE);
+                return (
+                  <>
+                    {pagedCompanies.map((company) => (
+                      <div key={company.name} className="custom-tech-row" style={{ marginBottom: 8 }}>
+                        <span className="chip selected chip-custom" style={{ flex: '0 0 auto' }}>
+                          {company.name}
+                        </span>
+                        <select
+                          className="profile-input profile-select"
+                          value={company.tier || 'preferred'}
+                          onChange={(e) => updateTargetCompanyTier(company.name, e.target.value)}
+                        >
+                          {COMPANY_TIER_OPTIONS.map((opt) => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                        </select>
+                        <button type="button" className="button button-danger" onClick={() => removeTargetCompany(company.name)}>
+                          Remove
+                        </button>
+                      </div>
                     ))}
-                  </select>
-                  <button type="button" className="button button-danger" onClick={() => removeTargetCompany(company.name)}>
-                    Remove
-                  </button>
-                </div>
-              ))}
+                    {targetCompanies.length > COMPANIES_PER_PAGE && (
+                      <div className="pagination pagination-compact">
+                        <button
+                          type="button"
+                          className="pagination-btn"
+                          onClick={() => setCompanyPage((p) => Math.max(0, p - 1))}
+                          disabled={currentPage === 0}
+                        >
+                          <ChevronLeft size={16} />
+                        </button>
+                        <span className="pagination-pages-label">
+                          Page {currentPage + 1} of {totalPages} ({targetCompanies.length} companies)
+                        </span>
+                        <button
+                          type="button"
+                          className="pagination-btn"
+                          onClick={() => setCompanyPage((p) => Math.min(totalPages - 1, p + 1))}
+                          disabled={currentPage === totalPages - 1}
+                        >
+                          <ChevronRight size={16} />
+                        </button>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
               <div className="custom-tech-row">
                 <div className="autocomplete-input-wrapper">
                   <input

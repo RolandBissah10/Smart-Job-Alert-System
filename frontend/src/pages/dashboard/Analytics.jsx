@@ -165,7 +165,7 @@ export default function Analytics({ refreshKey }) {
           />
         </div>
 
-        <div className="analytics-chart-card">
+        <div className="analytics-chart-card analytics-chart-card-wide">
           <div className="analytics-chart-card-header">
             <div className="analytics-chart-icon"><Bell size={18} /></div>
             <div>

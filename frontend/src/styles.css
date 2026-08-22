@@ -1211,6 +1211,10 @@ main.dashboard-main-wrapper {
   box-shadow: var(--shadow);
 }
 
+.analytics-chart-card-wide {
+  grid-column: 1 / -1;
+}
+
 .analytics-chart-card h3 {
   font-size: 1.05rem;
   font-weight: 700;
@@ -1967,9 +1971,8 @@ main.dashboard-main-wrapper {
 
 .wizard-steps {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0;
+  align-items: flex-start;
+  justify-content: space-between;
   margin-bottom: 8px;
   position: relative;
 }
@@ -1977,13 +1980,23 @@ main.dashboard-main-wrapper {
 .wizard-steps::before {
   content: '';
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 240px;
+  top: 18px;
+  left: 10%;
+  right: 10%;
   height: 2px;
   background: var(--border);
   z-index: 0;
+}
+
+.wizard-step-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  z-index: 1;
 }
 
 .wizard-step {
@@ -1999,9 +2012,8 @@ main.dashboard-main-wrapper {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1;
+  flex-shrink: 0;
   transition: all 0.2s ease;
-  margin: 0 40px;
 }
 
 .wizard-step:hover {
@@ -2022,16 +2034,16 @@ main.dashboard-main-wrapper {
   color: white;
 }
 
-.wizard-step-labels {
-  display: flex;
-  justify-content: space-between;
+.wizard-step-label {
   font-size: 0.8rem;
   color: var(--text-light);
   font-weight: 500;
-  padding: 0 20px;
+  text-align: center;
+  line-height: 1.3;
+  padding: 0 2px;
 }
 
-.wizard-step-labels span.active {
+.wizard-step-label.active {
   color: var(--primary);
   font-weight: 700;
 }
@@ -2638,14 +2650,6 @@ select {
     padding: 12px 14px;
   }
 
-  .wizard-step {
-    margin: 0 18px;
-  }
-
-  .wizard-steps::before {
-    width: 160px;
-  }
-
   .profile-prompt {
     flex-direction: column;
     align-items: flex-start;
@@ -2726,10 +2730,6 @@ select {
     padding: 20px 16px;
   }
 
-  .wizard-step {
-    margin: 0 10px;
-  }
-
   .profile-panel-title {
     font-size: 1.2rem;
   }
@@ -2771,19 +2771,14 @@ select {
     white-space: nowrap;
   }
 
-  .wizard-step-labels {
-    font-size: 0.72rem;
-    padding: 0 8px;
+  .wizard-step-label {
+    font-size: 0.7rem;
   }
 
   .cv-file-input::file-selector-button {
     display: block;
     margin: 0 0 10px;
     width: 100%;
-  }
-
-  .wizard-steps::before {
-    width: 100px;
   }
 
   .pagination-pages {
@@ -2859,6 +2854,18 @@ select {
   color: var(--text-light);
   font-size: 0.875rem;
   line-height: 1;
+}
+
+.pagination-compact {
+  justify-content: flex-start;
+  margin-top: 12px;
+  margin-bottom: 4px;
+}
+
+.pagination-pages-label {
+  font-size: 0.85rem;
+  color: var(--text-light);
+  white-space: nowrap;
 }
 
 .tracker-board {
