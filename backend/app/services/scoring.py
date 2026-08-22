@@ -13,6 +13,7 @@ from app.services.seniority import (
 )
 from app.services.skills_taxonomy import get_transferable_skills
 from app.services.career_paths import classify_career_paths
+from app.services.role_synonyms import expand_role_terms
 
 # Weight given to a job-required skill the candidate doesn't have directly, but
 # has evidence of via a related skill (e.g. job wants "Test Automation", candidate
@@ -203,7 +204,8 @@ def compute_match(job: dict, profile: dict) -> dict:
     top_paths = classify_career_paths(candidate_skills, limit=1)
     if top_paths:
         top_role = top_paths[0]["role"]
-        if top_role.lower() in _normalize(job.get("title", "")):
+        job_title = _normalize(job.get("title", ""))
+        if any(term.lower() in job_title for term in expand_role_terms(top_role)):
             reasons.append(f"Matches your top career path: {top_role}")
 
     reasons = list(dict.fromkeys(reasons))[:8]

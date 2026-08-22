@@ -1,6 +1,7 @@
 import re
 
 from app.services.profile_utils import get_profile_skills
+from app.services.role_synonyms import expand_roles
 from app.services.scoring import compute_match
 
 
@@ -31,7 +32,7 @@ def _get_keywords_from_profile(profile: dict) -> list:
 
     if match_source in {"profile", "both"}:
         keywords.extend(get_profile_skills(profile))
-        keywords.extend(profile.get("roles", []))
+        keywords.extend(_get_profile_roles(profile))
         industry = profile.get("industry", "")
         if industry:
             keywords.append(industry.replace("_", " "))
@@ -50,7 +51,7 @@ def _get_profile_skills(profile: dict) -> list:
 def _get_profile_roles(profile: dict) -> list:
     if get_match_source(profile) == "cv":
         return []
-    return profile.get("roles", [])
+    return expand_roles(profile.get("roles", []))
 
 
 def _get_profile_industry_terms(profile: dict) -> list:
