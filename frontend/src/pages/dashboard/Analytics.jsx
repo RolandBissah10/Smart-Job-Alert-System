@@ -3,6 +3,8 @@ import { getAnalytics, getDashboard } from '../../services/api';
 import { RefreshCw, TrendingUp, Zap, Layers, Bell, Target } from 'lucide-react';
 import BarChart from '../../components/charts/BarChart';
 import HorizontalBarList from '../../components/charts/HorizontalBarList';
+import LineChart from '../../components/charts/LineChart';
+import DonutChart from '../../components/charts/DonutChart';
 
 const REFRESH_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
 
@@ -145,7 +147,7 @@ export default function Analytics({ refreshKey }) {
               <p className="analytics-chart-subtitle">Experience level of jobs matching your profile, intern to director</p>
             </div>
           </div>
-          <HorizontalBarList
+          <DonutChart
             data={seniorityMix}
             colors={SENIORITY_COLORS}
             emptyMessage={data?.profile_complete ? 'No seniority data in your current matches yet.' : 'Set up your profile or CV to see this.'}
@@ -160,7 +162,7 @@ export default function Analytics({ refreshKey }) {
               <p className="analytics-chart-subtitle">How many job alerts you've received per day</p>
             </div>
           </div>
-          <BarChart
+          <LineChart
             data={alertsOverTime}
             emptyMessage="No alerts sent in the last 14 days."
           />
