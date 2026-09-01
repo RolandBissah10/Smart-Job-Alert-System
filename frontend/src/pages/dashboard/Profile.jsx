@@ -316,7 +316,7 @@ export default function Profile({ onProfileChange }) {
         setWorkAuthorization(p.work_authorization || '');
         setTargetCompanies(normalizeTargetCompanies(p.target_companies));
         setCareerPaths(data.career_paths || []);
-        setLocation(p.location || 'Remote');
+        setLocation(p.location === '' ? 'Any' : p.location || 'Remote');
         setJobType(p.job_type === '' ? 'All' : p.job_type || 'Full-time');
         setMatchSource(data.match_source || 'profile');
         setCvData(currentCvData);
@@ -483,7 +483,7 @@ export default function Profile({ onProfileChange }) {
     salary_expectation: salaryExpectation || null,
     work_authorization: workAuthorization || null,
     target_companies: targetCompanies,
-    location,
+    location: location === 'Any' ? '' : location,
     job_type: jobType === 'All' ? '' : jobType,
   });
 
@@ -1203,6 +1203,7 @@ export default function Profile({ onProfileChange }) {
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
               >
+                <option value="Any">Any (Remote, On-Premises, or Hybrid)</option>
                 <option value="Remote">Remote</option>
                 <option value="On-Premises">On-Premises</option>
                 <option value="Hybrid">Hybrid</option>
