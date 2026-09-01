@@ -12,7 +12,7 @@ from app.services.seniority import classify_seniority_from_title
 from app.services.text_utils import clean_text as _clean_text
 from datetime import datetime
 from email.utils import parsedate_to_datetime
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlsplit, urlunsplit
 import logging
 
 logger = logging.getLogger(__name__)
@@ -971,6 +971,15 @@ def _build_adzuna_queries() -> list:
         return fallback
 
 
+def _strip_tracking_params(url: str) -> str:
+    """Drops the query string from a URL, keeping only scheme/host/path. Adzuna's
+    redirect_url embeds a session token (se=) that's regenerated on every API
+    call for the same job, so deduping on the raw URL let the same posting get
+    re-inserted as "new" on every scrape - stripping it gives a stable identity."""
+    parts = urlsplit(url)
+    return urlunsplit((parts.scheme, parts.netloc, parts.path, "", ""))
+
+
 def _fetch_adzuna():
     if not ADZUNA_APP_ID or not ADZUNA_APP_KEY:
         return []
@@ -999,11 +1008,12 @@ def _fetch_adzuna():
             r.raise_for_status()
             for item in r.json().get("results", []):
                 posted_date = _parse_date_safe(item.get("created"))
+                redirect_url = item.get("redirect_url")
                 jobs.append({
                     "title": item.get("title", ""),
                     "company": item.get("company", {}).get("display_name", ""),
                     "location": item.get("location", {}).get("display_name", ""),
-                    "url": item.get("redirect_url"),
+                    "url": _strip_tracking_params(redirect_url) if redirect_url else redirect_url,
                     "source": "adzuna",
                     "description": item.get("description", "")[:500],
                     "employment_type": item.get("contract_time") or item.get("contract_type") or None,
