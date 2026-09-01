@@ -10,7 +10,10 @@ export default function Jobs({ onNavigate, refreshKey, onProfileChange }) {
   const [savedJobs, setSavedJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(() => {
+    const stored = Number(localStorage.getItem('jobFeedPage'));
+    return stored >= 1 ? stored : 1;
+  });
 
   const load = (targetPage = page) => {
     setLoading(true);
@@ -27,6 +30,19 @@ export default function Jobs({ onNavigate, refreshKey, onProfileChange }) {
   };
 
   useEffect(() => { load(page); }, [page, refreshKey]);
+
+  useEffect(() => {
+    localStorage.setItem('jobFeedPage', String(page));
+  }, [page]);
+
+  // A page restored from a previous visit can land past the end if the feed
+  // has since shrunk (jobs expired, profile changed) - snap back onto the
+  // last real page instead of showing a blank "page 5 of 2".
+  useEffect(() => {
+    if (!feed || feed.error || feed.profile_required) return;
+    const totalPages = Math.ceil((feed.total ?? 0) / PAGE_SIZE);
+    if (totalPages > 0 && page > totalPages) setPage(totalPages);
+  }, [feed]);
 
   // Refresh the feed when the user returns to the tab so they see newly scraped jobs
   useEffect(() => {
