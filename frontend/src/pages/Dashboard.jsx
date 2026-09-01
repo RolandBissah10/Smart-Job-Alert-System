@@ -20,10 +20,23 @@ const NAV_ITEMS = [
   { id: 'analytics', label: 'Analytics', icon: BarChart2 },
 ];
 
+const SECTION_COMPONENTS = {
+  overview: Overview,
+  profile: Profile,
+  jobs: Jobs,
+  saved: Saved,
+  alerts: Alerts,
+  analytics: Analytics,
+};
+
 export default function Dashboard() {
   const [section, setSection] = useState(
     () => localStorage.getItem('dashboardSection') || 'overview'
   );
+  // Sections stay mounted once visited so switching tabs doesn't wipe their
+  // local state (pagination, scroll position, in-progress form edits, etc.) -
+  // only the active one is shown, the rest sit hidden via CSS.
+  const [visitedSections, setVisitedSections] = useState(() => new Set([section]));
   const [dashboardRefreshKey, setDashboardRefreshKey] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [email, setEmail] = useState('');
@@ -45,6 +58,7 @@ export default function Dashboard() {
 
   const handleSectionChange = (id) => {
     setSection(id);
+    setVisitedSections((prev) => (prev.has(id) ? prev : new Set(prev).add(id)));
     localStorage.setItem('dashboardSection', id);
     setSidebarOpen(false);
   };
@@ -74,15 +88,6 @@ export default function Dashboard() {
       localStorage.setItem('theme', 'light');
     }
   };
-
-  const SectionComponent = {
-    overview: Overview,
-    profile: Profile,
-    jobs: Jobs,
-    saved: Saved,
-    alerts: Alerts,
-    analytics: Analytics,
-  }[section];
 
   return (
     <div className="dashboard-layout">
@@ -156,11 +161,18 @@ export default function Dashboard() {
           </div>
         </div>
         <div className="dashboard-section">
-          <SectionComponent
-            onNavigate={handleSectionChange}
-            refreshKey={dashboardRefreshKey}
-            onProfileChange={handleProfileChange}
-          />
+          {Array.from(visitedSections).map((id) => {
+            const SectionComponent = SECTION_COMPONENTS[id];
+            return (
+              <div key={id} hidden={section !== id}>
+                <SectionComponent
+                  onNavigate={handleSectionChange}
+                  refreshKey={dashboardRefreshKey}
+                  onProfileChange={handleProfileChange}
+                />
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

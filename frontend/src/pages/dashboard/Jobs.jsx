@@ -5,7 +5,7 @@ import { Zap, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const PAGE_SIZE = 6;
 
-export default function Jobs({ onNavigate, refreshKey }) {
+export default function Jobs({ onNavigate, refreshKey, onProfileChange }) {
   const [feed, setFeed] = useState(null);
   const [savedJobs, setSavedJobs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -38,7 +38,11 @@ export default function Jobs({ onNavigate, refreshKey }) {
   const isJobSaved = (job) =>
     savedJobs.some((s) => s.job_id === (job._id || job.url));
 
-  const refreshSaved = () => getSavedJobs().then(setSavedJobs).catch(console.error);
+  const refreshSaved = () => {
+    getSavedJobs().then(setSavedJobs).catch(console.error);
+    // Saved-jobs count/tracker live in other dashboard tabs - nudge them to refetch too.
+    onProfileChange?.();
+  };
 
   if (loading) return <p className="loading-text">Loading your job feed...</p>;
 

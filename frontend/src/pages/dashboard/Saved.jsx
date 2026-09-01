@@ -3,7 +3,7 @@ import { getSavedJobs } from '../../services/api';
 import TrackerCard, { STATUSES, STATUS_LABELS } from '../../components/TrackerCard';
 import { Heart } from 'lucide-react';
 
-export default function Saved() {
+export default function Saved({ refreshKey, onProfileChange }) {
   const [savedJobs, setSavedJobs] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -15,7 +15,14 @@ export default function Saved() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(load, []);
+  useEffect(load, [refreshKey]);
+
+  // A status/notes/unsave edit here also affects Overview's saved-jobs count
+  // and the Job Feed's heart icons, which live in other (possibly hidden) tabs.
+  const handleCardChange = () => {
+    load();
+    onProfileChange?.();
+  };
 
   if (loading) return <p className="loading-text">Loading tracker...</p>;
 
@@ -55,7 +62,7 @@ export default function Saved() {
                   <p className="tracker-column-empty">Nothing here</p>
                 ) : (
                   jobs.map((job) => (
-                    <TrackerCard key={job.job_id} job={job} onChange={load} />
+                    <TrackerCard key={job.job_id} job={job} onChange={handleCardChange} />
                   ))
                 )}
               </div>
