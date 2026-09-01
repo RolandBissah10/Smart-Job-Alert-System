@@ -939,7 +939,6 @@ main.dashboard-main-wrapper {
   bottom: 0;
   z-index: 200;
   transition: transform 0.3s ease;
-  overflow-y: auto;
 }
 
 .sidebar-brand {
@@ -966,10 +965,13 @@ main.dashboard-main-wrapper {
 
 .sidebar-nav {
   flex: 1;
+  min-height: 0;
   padding: 16px 12px;
   display: flex;
   flex-direction: column;
   gap: 4px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .sidebar-item {
@@ -1061,6 +1063,14 @@ main.dashboard-main-wrapper {
   inset: 0;
   background: rgba(0, 0, 0, 0.5);
   z-index: 150;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+}
+
+.sidebar-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .dashboard-content {
@@ -2597,6 +2607,11 @@ select {
 
   .sidebar-overlay {
     display: block;
+  }
+
+  .dashboard-sidebar {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.15);
   }
 
   .dashboard-content {

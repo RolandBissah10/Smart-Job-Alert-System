@@ -126,15 +126,20 @@ export default function Dashboard() {
       </aside>
 
       {/* Mobile overlay */}
-      {sidebarOpen && (
-        <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />
-      )}
+      <div
+        className={`sidebar-overlay ${sidebarOpen ? 'open' : ''}`}
+        onClick={() => setSidebarOpen(false)}
+      />
 
       {/* Main content */}
       <div className="dashboard-content">
         <div className="dashboard-topbar">
-          <button className="sidebar-menu-btn" onClick={() => setSidebarOpen(true)}>
-            <Menu size={22} />
+          <button
+            className="sidebar-menu-btn"
+            onClick={() => setSidebarOpen((open) => !open)}
+            aria-label={sidebarOpen ? 'Close navigation menu' : 'Open navigation menu'}
+          >
+            {sidebarOpen ? <X size={22} /> : <Menu size={22} />}
           </button>
           <h2 className="topbar-title">
             {NAV_ITEMS.find((i) => i.id === section)?.label}
