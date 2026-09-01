@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { getMe, updateProfile, resetProfile, uploadCv, deleteCv, updateMatchSource } from '../../services/api';
 import { CheckCircle, ChevronRight, ChevronLeft, ChevronDown } from 'lucide-react';
 import useCompanySearch from '../../hooks/useCompanySearch';
@@ -234,7 +234,10 @@ function persistCustomIndustries(industries) {
 }
 
 export default function Profile({ onProfileChange }) {
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(() => {
+    const stored = Number(localStorage.getItem('profileWizardStep'));
+    return stored >= 1 && stored <= 5 ? stored : 1;
+  });
   const [industry, setIndustry] = useState('');
   const [skills, setSkills] = useState([]);
   const [customSkillInput, setCustomSkillInput] = useState('');
@@ -267,6 +270,8 @@ export default function Profile({ onProfileChange }) {
   const [profileExists, setProfileExists] = useState(false);
   const [matchSource, setMatchSource] = useState('profile');
   const [cvData, setCvData] = useState({ has_cv: false, filename: '', keyword_count: 0, preview: '' });
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
+  const [draftStatus, setDraftStatus] = useState('');
 
   const companySuggestions = useCompanySearch(customCompanyInput, { enabled: showCompanySuggestions });
 
@@ -317,7 +322,8 @@ export default function Profile({ onProfileChange }) {
         setCvData(currentCvData);
         persistCustomProfileFields(savedIndustry, backendSkills, backendRoles);
       })
-      .catch(console.error);
+      .catch(console.error)
+      .finally(() => setInitialLoadDone(true));
   }, []);
 
   const hasProfileData = !!(industry || skills.length || roles.length || experienceLevel);
@@ -481,6 +487,45 @@ export default function Profile({ onProfileChange }) {
     job_type: jobType === 'All' ? '' : jobType,
   });
 
+  // Selections were only ever persisted when the user reached the final step
+  // and clicked Save - refreshing (or just closing the tab) any earlier lost
+  // everything. Auto-save a draft in the background shortly after each change
+  // so progress survives a refresh at any point in the wizard, not just step 5.
+  const skippedLoadTriggeredRun = useRef(false);
+  useEffect(() => {
+    if (!initialLoadDone) return undefined;
+
+    // The values loaded from the server also change this effect's deps -
+    // skip that one run so we don't immediately re-save what we just loaded.
+    if (!skippedLoadTriggeredRun.current) {
+      skippedLoadTriggeredRun.current = true;
+      return undefined;
+    }
+
+    const timer = setTimeout(() => {
+      setDraftStatus('saving');
+      updateProfile(buildProfilePayload())
+        .then(() => {
+          persistCustomProfileFields(industry, skills, roles);
+          setProfileExists(true);
+          setDraftStatus('saved');
+        })
+        .catch(() => setDraftStatus('error'));
+    }, 1200);
+
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    initialLoadDone, industry, skills, roles, experienceLevel, yearsExperience,
+    education, certifications, projects, salaryExpectation, workAuthorization,
+    targetCompanies, location, jobType,
+  ]);
+
+  // So a refresh mid-wizard resumes on the same step instead of bouncing back to step 1.
+  useEffect(() => {
+    localStorage.setItem('profileWizardStep', String(step));
+  }, [step]);
+
   const persistMatchSource = async (nextMatchSource, { syncProfile = true } = {}) => {
     if (syncProfile && nextMatchSource !== 'cv' && hasProfileData) {
       await updateProfile(buildProfilePayload());
@@ -506,6 +551,7 @@ export default function Profile({ onProfileChange }) {
       persistCustomProfileFields(industry, skills, roles);
       setSaved(true);
       setProfileExists(true);
+      setDraftStatus('');
       onProfileChange?.();
       setTimeout(() => setSaved(false), 3000);
     } catch (err) {
@@ -543,6 +589,7 @@ export default function Profile({ onProfileChange }) {
       setStep(1);
       setProfileExists(false);
       setConfirmReset(false);
+      setDraftStatus('');
       if (cvData.has_cv) {
         await persistMatchSource('cv');
       } else {
@@ -687,6 +734,9 @@ export default function Profile({ onProfileChange }) {
           <div className="profile-step">
             <h2>{profileExists ? 'Update Your Profile' : 'Set Up Your Profile'}</h2>
             <p>Help us match you with the right jobs</p>
+            {draftStatus === 'saving' && <span className="section-header-updated">Saving draft...</span>}
+            {draftStatus === 'saved' && <span className="section-header-updated">Draft saved</span>}
+            {draftStatus === 'error' && <span className="section-header-updated" style={{ color: 'var(--error)', whiteSpace: 'normal' }}>Couldn&apos;t save draft - check your connection</span>}
           </div>
           {profileExists && !confirmReset && (
             <button
