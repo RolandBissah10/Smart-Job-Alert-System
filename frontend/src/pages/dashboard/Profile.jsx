@@ -173,7 +173,7 @@ const INDUSTRY_ROLES = {
 };
 
 const EXPERIENCE_OPTIONS = ['Junior', 'Mid', 'Senior'];
-const JOB_TYPE_OPTIONS = ['Full-time', 'Part-time', 'Contract', 'Internship', 'Freelance'];
+const JOB_TYPE_OPTIONS = ['All', 'Full-time', 'Part-time', 'Contract', 'Internship', 'Freelance'];
 const MATCH_SOURCE_OPTIONS = [
   { value: 'profile', label: 'Profile Only' },
   { value: 'cv', label: 'CV Only' },
@@ -312,7 +312,7 @@ export default function Profile({ onProfileChange }) {
         setTargetCompanies(normalizeTargetCompanies(p.target_companies));
         setCareerPaths(data.career_paths || []);
         setLocation(p.location || 'Remote');
-        setJobType(p.job_type || 'Full-time');
+        setJobType(p.job_type === '' ? 'All' : p.job_type || 'Full-time');
         setMatchSource(data.match_source || 'profile');
         setCvData(currentCvData);
         persistCustomProfileFields(savedIndustry, backendSkills, backendRoles);
@@ -478,7 +478,7 @@ export default function Profile({ onProfileChange }) {
     work_authorization: workAuthorization || null,
     target_companies: targetCompanies,
     location,
-    job_type: jobType,
+    job_type: jobType === 'All' ? '' : jobType,
   });
 
   const persistMatchSource = async (nextMatchSource, { syncProfile = true } = {}) => {
