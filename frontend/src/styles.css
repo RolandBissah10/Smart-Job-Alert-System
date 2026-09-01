@@ -1256,6 +1256,8 @@ main.dashboard-main-wrapper {
 }
 
 .analytics-chart-card {
+  display: flex;
+  flex-direction: column;
   background: var(--background);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
@@ -1281,6 +1283,10 @@ main.dashboard-main-wrapper {
 }
 
 .chart-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
   color: var(--text-light);
   font-size: 0.9rem;
   padding: 32px 0;
@@ -1291,7 +1297,8 @@ main.dashboard-main-wrapper {
 
 .bar-chart-plot {
   position: relative;
-  height: 180px;
+  flex: 1;
+  min-height: 180px;
 }
 
 .bar-chart-grid {
@@ -1369,6 +1376,8 @@ main.dashboard-main-wrapper {
 .hbar-list {
   display: flex;
   flex-direction: column;
+  flex: 1;
+  justify-content: space-between;
   gap: 10px;
 }
 
@@ -1653,6 +1662,7 @@ main.dashboard-main-wrapper {
   align-items: flex-start;
   gap: 12px;
   margin-bottom: 20px;
+  flex-shrink: 0;
 }
 
 .analytics-chart-card-header h3 {
