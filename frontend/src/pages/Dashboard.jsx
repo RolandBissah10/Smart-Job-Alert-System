@@ -134,16 +134,26 @@ export default function Dashboard() {
       {/* Main content */}
       <div className="dashboard-content">
         <div className="dashboard-topbar">
-          <button
-            className="sidebar-menu-btn"
-            onClick={() => setSidebarOpen((open) => !open)}
-            aria-label={sidebarOpen ? 'Close navigation menu' : 'Open navigation menu'}
-          >
-            {sidebarOpen ? <X size={22} /> : <Menu size={22} />}
-          </button>
-          <h2 className="topbar-title">
-            {NAV_ITEMS.find((i) => i.id === section)?.label}
-          </h2>
+          <div className="topbar-left">
+            <button
+              className="sidebar-menu-btn"
+              onClick={() => setSidebarOpen((open) => !open)}
+              aria-label={sidebarOpen ? 'Close navigation menu' : 'Open navigation menu'}
+            >
+              {sidebarOpen ? <X size={22} /> : <Menu size={22} />}
+            </button>
+            <h2 className="topbar-title">
+              {NAV_ITEMS.find((i) => i.id === section)?.label}
+            </h2>
+          </div>
+          <div className="topbar-actions">
+            <button className="topbar-icon-btn" onClick={toggleDark} aria-label="Toggle theme" title="Toggle theme">
+              {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+            <button className="topbar-icon-btn topbar-logout" onClick={handleLogout} aria-label="Logout" title="Logout">
+              <LogOut size={18} />
+            </button>
+          </div>
         </div>
         <div className="dashboard-section">
           <SectionComponent
