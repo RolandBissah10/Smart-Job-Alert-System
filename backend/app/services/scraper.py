@@ -350,13 +350,16 @@ def _fetch_jobicy():
     return jobs
 
 
-def _fetch_detail_pages_parallel(links, source, fallback_location="", max_workers=8):
+def _fetch_detail_pages_parallel(links, source, fallback_location="", fallback_company="", max_workers=8):
     """Fetches each linked detail page concurrently - these are independent HTTP
     requests, so running them sequentially just adds up N round-trips of latency
     for no benefit."""
     jobs = []
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = [executor.submit(_parse_generic_detail, url, source, fallback_location=fallback_location) for url, _ in links]
+        futures = [
+            executor.submit(_parse_generic_detail, url, source, fallback_location=fallback_location, fallback_company=fallback_company)
+            for url, _ in links
+        ]
         for future in as_completed(futures):
             job = future.result()
             if job:
@@ -453,6 +456,60 @@ def _fetch_corporategh():
         logger.info(f"CorporateGh: {len(jobs)} jobs")
     except Exception as e:
         logger.error(f"CorporateGh failed: {e}")
+    return jobs
+
+
+def _fetch_effyis_group():
+    # No dedicated job-listing index page exists on this site - individual
+    # /careers/{slug} postings are only linked from the site-wide nav/footer,
+    # so any ordinary page (here, /contact) surfaces the same link set. Every
+    # posting is Effyis Group's own (single-company site, no per-job JSON-LD),
+    # so the company is fixed rather than left to _parse_generic_detail's
+    # generic h2/h3 guess, which was picking up section headings by mistake.
+    jobs = []
+    try:
+        soup = _fetch_soup("https://www.effyisgroup.com/contact")
+        links = _collect_links(
+            soup,
+            "https://www.effyisgroup.com",
+            lambda href: "/careers/" in href,
+            limit=25,
+        )
+        jobs = _fetch_detail_pages_parallel(
+            links, "effyis_group", fallback_location="Morocco", fallback_company="Effyis Group"
+        )
+        logger.info(f"Effyis Group: {len(jobs)} jobs")
+    except Exception as e:
+        logger.error(f"Effyis Group failed: {e}")
+    return jobs
+
+
+def _fetch_africarrieres_ghana():
+    # The /jobs search page itself is rendered client-side (a Livewire
+    # component), so its listings never appear in the raw HTML - but individual
+    # job pages ARE server-rendered with full JobPosting JSON-LD, and the site's
+    # sitemap lists all of them with a per-job <lastmod>. Using the sitemap as
+    # the link source sidesteps the client-rendered search page entirely.
+    jobs = []
+    try:
+        r = requests.get("https://africarrieres.com/sitemap-gh-en.xml", headers=HEADERS, timeout=TIMEOUT)
+        r.raise_for_status()
+        ns = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
+        root = ET.fromstring(r.content)
+
+        entries = []
+        for url_el in root.findall("sm:url", ns):
+            loc = url_el.findtext("sm:loc", default="", namespaces=ns)
+            lastmod = url_el.findtext("sm:lastmod", default="", namespaces=ns)
+            if "/ghana/en/emplois/" in loc and loc.rstrip("/") != "https://africarrieres.com/ghana/en/emplois":
+                entries.append((loc, lastmod))
+        entries.sort(key=lambda e: e[1], reverse=True)
+
+        links = [(loc, "") for loc, _ in entries[:25]]
+        jobs = _fetch_detail_pages_parallel(links, "africarrieres_ghana", fallback_location="Ghana")
+        logger.info(f"Africarrieres Ghana: {len(jobs)} jobs")
+    except Exception as e:
+        logger.error(f"Africarrieres Ghana failed: {e}")
     return jobs
 
 
@@ -972,6 +1029,8 @@ def fetch_jobs():
         _fetch_jobberman_ghana,
         _fetch_glmis_ghana,
         _fetch_corporategh,
+        _fetch_effyis_group,
+        _fetch_africarrieres_ghana,
         _fetch_arc_ghana,
         _fetch_adzuna,
         _fetch_canonical,

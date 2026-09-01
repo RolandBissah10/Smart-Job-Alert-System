@@ -2622,6 +2622,17 @@ select {
     grid-template-columns: repeat(2, 1fr);
   }
 
+  .tracker-board {
+    gap: 12px;
+    margin: 0 -16px;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .tracker-column {
+    flex-basis: 82vw;
+  }
+
   .profile-page {
     gap: 20px;
   }
@@ -2873,6 +2884,8 @@ select {
   gap: 16px;
   overflow-x: auto;
   padding-bottom: 8px;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x proximity;
 }
 
 .tracker-column {
@@ -2880,6 +2893,7 @@ select {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  scroll-snap-align: start;
 }
 
 .tracker-column-header {
