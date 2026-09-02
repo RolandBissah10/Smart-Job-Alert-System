@@ -68,8 +68,10 @@ def get_job_feed(
 
     profile_version = user.get("profile_version", 1)
 
-    # Cache key for job feed
-    cache_key = f"job_feed:{profile_version}:{page}:{page_size}"
+    # Cache key for job feed - must be scoped per user, not just profile_version,
+    # since two different users commonly share the same (default) profile_version
+    # and would otherwise be served each other's scored results from the cache.
+    cache_key = f"job_feed:{email}:{profile_version}:{page}:{page_size}"
 
     # Try to get cached data
     cached_data = cache.get(cache_key)
