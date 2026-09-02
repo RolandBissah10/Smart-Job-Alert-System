@@ -3,7 +3,9 @@ import { getDashboard, getAlerts, createAlert, updateAlert, deleteAlert } from '
 import { Bell, RefreshCw, Plus, Pencil, Trash2 } from 'lucide-react';
 import ChipInput from '../../components/ChipInput';
 
-const REFRESH_INTERVAL = 24 * 60 * 60 * 1000;
+// Matches the backend's job-feed cache TTL, so a poll always has a real
+// chance of seeing fresh data rather than re-fetching the same cached result.
+const REFRESH_INTERVAL = 5 * 60 * 1000;
 
 const LOCATION_OPTIONS = ['', 'Remote', 'On-Premises', 'Hybrid'];
 const JOB_TYPE_OPTIONS = ['', 'Full-time', 'Part-time', 'Contract', 'Internship', 'Freelance'];

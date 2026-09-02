@@ -4,6 +4,9 @@ import JobCard from '../../components/JobCard';
 import { Zap, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const PAGE_SIZE = 6;
+// Matches the backend's job-feed cache TTL, so a poll always has a real
+// chance of seeing fresh data rather than re-fetching the same cached result.
+const REFRESH_INTERVAL = 5 * 60 * 1000;
 
 export default function Jobs({ onNavigate, refreshKey, onProfileChange }) {
   const [feed, setFeed] = useState(null);
@@ -15,8 +18,8 @@ export default function Jobs({ onNavigate, refreshKey, onProfileChange }) {
     return stored >= 1 ? stored : 1;
   });
 
-  const load = (targetPage = page) => {
-    setLoading(true);
+  const load = (targetPage = page, { silent = false } = {}) => {
+    if (!silent) setLoading(true);
     setError('');
     Promise.all([
       getJobFeed(targetPage, PAGE_SIZE).catch((err) => ({ error: err.message })),
@@ -26,7 +29,9 @@ export default function Jobs({ onNavigate, refreshKey, onProfileChange }) {
         setFeed(feedData);
         setSavedJobs(saved);
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (!silent) setLoading(false);
+      });
   };
 
   useEffect(() => { load(page); }, [page, refreshKey]);
@@ -44,11 +49,18 @@ export default function Jobs({ onNavigate, refreshKey, onProfileChange }) {
     if (totalPages > 0 && page > totalPages) setPage(totalPages);
   }, [feed]);
 
-  // Refresh the feed when the user returns to the tab so they see newly scraped jobs
+  // Refresh the feed when the user returns to the tab, and periodically while
+  // it stays open, so newly scraped/matched jobs show up without a manual
+  // reload. Both are silent (no full-page loading flash) since they're
+  // background refreshes, not something the user asked for right now.
   useEffect(() => {
-    const onFocus = () => load(page);
+    const onFocus = () => load(page, { silent: true });
     window.addEventListener('focus', onFocus);
-    return () => window.removeEventListener('focus', onFocus);
+    const interval = setInterval(() => load(page, { silent: true }), REFRESH_INTERVAL);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      clearInterval(interval);
+    };
   }, [page]);
 
   const isJobSaved = (job) =>

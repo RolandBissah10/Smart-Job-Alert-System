@@ -6,7 +6,9 @@ import HorizontalBarList from '../../components/charts/HorizontalBarList';
 import LineChart from '../../components/charts/LineChart';
 import DonutChart from '../../components/charts/DonutChart';
 
-const REFRESH_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
+// Matches the backend's job-feed cache TTL, so a poll always has a real
+// chance of seeing fresh data rather than re-fetching the same cached result.
+const REFRESH_INTERVAL = 5 * 60 * 1000;
 
 const SENIORITY_COLORS = [
   'var(--chart-ordinal-1)',

@@ -2,7 +2,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { getDashboard, runPipeline } from '../../services/api';
 import { Briefcase, Heart, Bell, TrendingUp, AlertCircle, RefreshCw } from 'lucide-react';
 
-const REFRESH_INTERVAL = 24 * 60 * 60 * 1000;
+// Matches the backend's job-feed cache TTL, so a poll always has a real
+// chance of seeing fresh data rather than re-fetching the same cached result.
+const REFRESH_INTERVAL = 5 * 60 * 1000;
 
 export default function Overview({ onNavigate, refreshKey }) {
   const [data, setData] = useState(null);
