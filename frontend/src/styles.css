@@ -2697,23 +2697,13 @@ select {
     grid-template-columns: repeat(2, 1fr);
   }
 
-  .tracker-board {
+  .tracker-list {
+    gap: 24px;
+  }
+
+  .tracker-section-grid {
+    grid-template-columns: 1fr;
     gap: 12px;
-    margin: 0 -16px;
-    padding-left: 16px;
-    padding-right: 16px;
-  }
-
-  .tracker-column {
-    flex-basis: 82vw;
-  }
-
-  /* Wide enough for two columns to sit comfortably side by side instead of
-     one dominant column with a sliver of the next. */
-  @media (min-width: 601px) {
-    .tracker-column {
-      flex-basis: 46vw;
-    }
   }
 
   .profile-page {
@@ -2806,10 +2796,6 @@ select {
 }
 
 @media (max-width: 480px) {
-  .tracker-column {
-    flex-basis: 88vw;
-  }
-
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 12px;
@@ -2966,24 +2952,25 @@ select {
   white-space: nowrap;
 }
 
-.tracker-board {
-  display: flex;
-  gap: 16px;
-  overflow-x: auto;
-  padding-bottom: 8px;
-  -webkit-overflow-scrolling: touch;
-  scroll-snap-type: x proximity;
-}
-
-.tracker-column {
-  flex: 0 0 280px;
+.tracker-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  scroll-snap-align: start;
+  gap: 28px;
 }
 
-/* One accent color per pipeline stage, threaded through the column header,
+.tracker-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.tracker-section-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+/* One accent color per pipeline stage, threaded through the section header,
    the status dot, each card's left edge, and the status select - so a
    column (or a card, out of order after a status change) reads at a glance
    without having to read the label. */
@@ -2993,7 +2980,7 @@ select {
 .status-offer { --status-color: var(--success); }
 .status-rejected { --status-color: var(--error); }
 
-.tracker-column-header {
+.tracker-section-header {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -3003,7 +2990,7 @@ select {
   color: var(--text);
 }
 
-.tracker-column-label {
+.tracker-section-label {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -3017,17 +3004,10 @@ select {
   flex-shrink: 0;
 }
 
-.tracker-column-count {
+.tracker-section-count {
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--text-light);
-}
-
-.tracker-column-empty {
-  color: var(--text-light);
-  font-size: 0.85rem;
-  padding: 12px 4px;
-  text-align: center;
 }
 
 .tracker-card {

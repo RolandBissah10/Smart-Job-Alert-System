@@ -49,25 +49,24 @@ export default function Saved({ refreshKey, onProfileChange }) {
           <p>Browse the Job Feed and save positions you are interested in.</p>
         </div>
       ) : (
-        <div className="tracker-board">
+        <div className="tracker-list">
           {STATUSES.map((status) => {
             const jobs = byStatus(status);
+            if (jobs.length === 0) return null;
             return (
-              <div key={status} className="tracker-column">
-                <div className={`tracker-column-header status-${status}`}>
-                  <span className="tracker-column-label">
+              <div key={status} className="tracker-section">
+                <div className={`tracker-section-header status-${status}`}>
+                  <span className="tracker-section-label">
                     <span className="tracker-status-dot" />
                     {STATUS_LABELS[status]}
                   </span>
-                  <span className="tracker-column-count">{jobs.length}</span>
+                  <span className="tracker-section-count">{jobs.length}</span>
                 </div>
-                {jobs.length === 0 ? (
-                  <p className="tracker-column-empty">Nothing here</p>
-                ) : (
-                  jobs.map((job) => (
+                <div className="tracker-section-grid">
+                  {jobs.map((job) => (
                     <TrackerCard key={job.job_id} job={job} onChange={handleCardChange} />
-                  ))
-                )}
+                  ))}
+                </div>
               </div>
             );
           })}
