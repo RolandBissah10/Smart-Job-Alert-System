@@ -54,8 +54,11 @@ export default function Saved({ refreshKey, onProfileChange }) {
             const jobs = byStatus(status);
             return (
               <div key={status} className="tracker-column">
-                <div className="tracker-column-header">
-                  <span>{STATUS_LABELS[status]}</span>
+                <div className={`tracker-column-header status-${status}`}>
+                  <span className="tracker-column-label">
+                    <span className="tracker-status-dot" />
+                    {STATUS_LABELS[status]}
+                  </span>
                   <span className="tracker-column-count">{jobs.length}</span>
                 </div>
                 {jobs.length === 0 ? (

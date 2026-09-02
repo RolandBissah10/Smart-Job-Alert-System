@@ -68,8 +68,10 @@ export default function TrackerCard({ job, onChange }) {
     }
   };
 
+  const status = job.status || 'saved';
+
   return (
-    <article className="job-card tracker-card">
+    <article className={`job-card tracker-card status-${status}`}>
       <div className="job-card-header">
         <div>
           <h3>{job.title}</h3>
@@ -88,7 +90,7 @@ export default function TrackerCard({ job, onChange }) {
 
       <select
         className="profile-input tracker-status-select"
-        value={job.status || 'saved'}
+        value={status}
         onChange={handleStatusChange}
         disabled={changingStatus}
       >
