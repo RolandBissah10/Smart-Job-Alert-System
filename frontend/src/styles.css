@@ -1075,6 +1075,7 @@ main.dashboard-main-wrapper {
 
 .dashboard-content {
   flex: 1;
+  min-width: 0;
   margin-left: 260px;
   min-height: 100vh;
   background: var(--surface);
