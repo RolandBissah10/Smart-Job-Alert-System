@@ -2483,6 +2483,8 @@ select {
    width just leaves a huge empty gap next to a left-anchored form. */
 .settings-page .dashboard-card {
   max-width: 640px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 /* ==================== EMPTY STATE ==================== */
