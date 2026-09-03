@@ -13,7 +13,9 @@ services:
         sync: false
       - key: JWT_ALGORITHM
         value: HS256
-      - key: RESEND_API_KEY
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASS
         sync: false
       - key: EMAIL_FROM
         sync: false

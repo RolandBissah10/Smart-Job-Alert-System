@@ -12,11 +12,9 @@ def _parse_csv_env(name: str, default: str = "") -> list[str]:
 MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017")
 JWT_SECRET = os.getenv("JWT_SECRET", "change-this-secret")
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
-RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
-# Resend's shared test sender - works immediately with no domain verification.
-# Once a custom domain is verified in the Resend dashboard, set EMAIL_FROM to
-# an address on that domain instead (e.g. "Smart Job Alert <alerts@yourdomain.com>").
-EMAIL_FROM = os.getenv("EMAIL_FROM", "Smart Job Alert <onboarding@resend.dev>")
+EMAIL_USER = os.getenv("EMAIL_USER", "")
+EMAIL_PASS = os.getenv("EMAIL_PASS", "")
+EMAIL_FROM = os.getenv("EMAIL_FROM", EMAIL_USER)
 PIPELINE_SECRET = os.getenv("PIPELINE_SECRET", "")
 ADZUNA_APP_ID = os.getenv("ADZUNA_APP_ID", "")
 ADZUNA_APP_KEY = os.getenv("ADZUNA_APP_KEY", "")

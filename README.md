@@ -221,7 +221,7 @@ Smart-Job-Alert-System/
 ## 📌 Notes
 
 - Use a secure `JWT_SECRET`
-- Keep `RESEND_API_KEY` out of source control
+- Set `EMAIL_USER` and `EMAIL_PASS` carefully
 - Do not hardcode credentials in source control
 - Start with one job source and expand safely
 
