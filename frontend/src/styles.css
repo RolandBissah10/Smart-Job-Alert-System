@@ -2478,15 +2478,37 @@ select {
   box-shadow: var(--shadow);
 }
 
-/* Settings' cards hold single-column forms whose inputs cap at 360px
-   (.profile-input) - constrain and center the whole page as one column
-   (heading included) rather than just the cards, so the title and the
-   cards share the same left edge instead of the title sitting flush
-   left while the cards float centered underneath it. */
+/* Constrain and center the whole page as one column (heading included)
+   rather than just the cards, so the title and the cards share the same
+   left edge instead of the title sitting flush left while the cards
+   float centered underneath it. */
 .settings-page {
-  max-width: 640px;
+  max-width: 560px;
   margin-left: auto;
   margin-right: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* .profile-input's 360px cap makes sense in the profile wizard, where many
+   fields sit side by side, but here each field is alone on its own row -
+   let it fill the card instead of leaving a dead gap next to a narrow box. */
+.settings-page .profile-input {
+  max-width: none;
+}
+
+.settings-card form .profile-section:last-of-type {
+  margin-bottom: 20px;
+}
+
+.settings-card-danger {
+  border-color: color-mix(in srgb, var(--error) 35%, var(--border));
+}
+
+.icon-badge-danger {
+  background: color-mix(in srgb, var(--error) 15%, var(--background));
+  color: var(--error);
 }
 
 /* ==================== EMPTY STATE ==================== */

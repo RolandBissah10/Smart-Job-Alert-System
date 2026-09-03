@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, BellOff, Trash2 } from 'lucide-react';
+import { KeyRound, Mail, Bell, BellOff, AlertTriangle, Trash2 } from 'lucide-react';
 import { getMe, changePassword, changeEmail, setAlertsPaused, deleteAccount } from '../../services/api';
 
 export default function Settings() {
@@ -115,8 +115,14 @@ export default function Settings() {
         </div>
       </div>
 
-      <div className="dashboard-card" style={{ marginBottom: 24 }}>
-        <h3 className="profile-panel-title">Change Password</h3>
+      <div className="dashboard-card settings-card">
+        <div className="analytics-chart-card-header">
+          <div className="analytics-chart-icon"><KeyRound size={18} /></div>
+          <div>
+            <h3>Change Password</h3>
+            <p className="analytics-chart-subtitle">Use a current password to set a new one</p>
+          </div>
+        </div>
         <form onSubmit={handleChangePassword}>
           <div className="profile-section">
             <label className="profile-label">Current Password</label>
@@ -158,11 +164,16 @@ export default function Settings() {
         </form>
       </div>
 
-      <div className="dashboard-card" style={{ marginBottom: 24 }}>
-        <h3 className="profile-panel-title">Change Email</h3>
-        <p className="profile-panel-text">
-          Current email: <strong>{email}</strong>
-        </p>
+      <div className="dashboard-card settings-card">
+        <div className="analytics-chart-card-header">
+          <div className="analytics-chart-icon"><Mail size={18} /></div>
+          <div>
+            <h3>Change Email</h3>
+            <p className="analytics-chart-subtitle">
+              Current: <strong>{email}</strong>
+            </p>
+          </div>
+        </div>
         <form onSubmit={handleChangeEmail}>
           <div className="profile-section">
             <label className="profile-label">New Email</label>
@@ -191,13 +202,18 @@ export default function Settings() {
         </form>
       </div>
 
-      <div className="dashboard-card" style={{ marginBottom: 24 }}>
-        <h3 className="profile-panel-title">Alert Preferences</h3>
-        <p className="profile-panel-text">
-          {alertsPaused
-            ? "Alerts are paused - you won't receive any job alert emails until you resume them."
-            : "Alerts are active - you'll receive job alert emails as usual."}
-        </p>
+      <div className="dashboard-card settings-card">
+        <div className="analytics-chart-card-header">
+          <div className="analytics-chart-icon">{alertsPaused ? <BellOff size={18} /> : <Bell size={18} />}</div>
+          <div>
+            <h3>Alert Preferences</h3>
+            <p className="analytics-chart-subtitle">
+              {alertsPaused
+                ? "Paused - you won't receive any job alert emails until you resume them."
+                : "Active - you'll receive job alert emails as usual."}
+            </p>
+          </div>
+        </div>
         <button
           className={`button ${alertsPaused ? '' : 'button-secondary'}`}
           onClick={handleTogglePause}
@@ -208,11 +224,16 @@ export default function Settings() {
         </button>
       </div>
 
-      <div className="dashboard-card">
-        <h3 className="profile-panel-title" style={{ color: 'var(--error)' }}>Danger Zone</h3>
-        <p className="profile-panel-text">
-          Permanently delete your account and all associated data (saved jobs, tracker status, alert configs, and alert history). This cannot be undone.
-        </p>
+      <div className="dashboard-card settings-card settings-card-danger">
+        <div className="analytics-chart-card-header">
+          <div className="analytics-chart-icon icon-badge-danger"><AlertTriangle size={18} /></div>
+          <div>
+            <h3 style={{ color: 'var(--error)' }}>Danger Zone</h3>
+            <p className="analytics-chart-subtitle">
+              Permanently delete your account and all associated data (saved jobs, tracker status, alert configs, and alert history). This cannot be undone.
+            </p>
+          </div>
+        </div>
         {!confirmDelete ? (
           <button className="button button-danger" onClick={() => setConfirmDelete(true)}>
             <Trash2 size={16} />
