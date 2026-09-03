@@ -171,12 +171,22 @@ Smart-Job-Alert-System/
    ```bash
    pip install -r requirements.txt
    ```
-4. Start MongoDB and Redis locally
-5. Run the FastAPI app:
+4. Run the FastAPI app:
    ```bash
    uvicorn app.main:app --reload
    ```
-6. Visit `http://127.0.0.1:8000/docs`
+5. Visit `http://127.0.0.1:8000/docs`
+
+#### Running tests
+
+```bash
+pip install -r requirements-dev.txt
+pytest
+```
+
+Covers the matching/scoring engine (`matcher.py`, `scoring.py`, `seniority.py`) and
+`profile_utils.py` - pure functions with no database dependency, so the suite runs
+in well under a second with no setup. Routes that touch MongoDB aren't covered yet.
 
 ### Frontend
 
