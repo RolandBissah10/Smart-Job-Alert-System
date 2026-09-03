@@ -2479,9 +2479,11 @@ select {
 }
 
 /* Settings' cards hold single-column forms whose inputs cap at 360px
-   (.profile-input), so letting the cards stretch to the full dashboard
-   width just leaves a huge empty gap next to a left-anchored form. */
-.settings-page .dashboard-card {
+   (.profile-input) - constrain and center the whole page as one column
+   (heading included) rather than just the cards, so the title and the
+   cards share the same left edge instead of the title sitting flush
+   left while the cards float centered underneath it. */
+.settings-page {
   max-width: 640px;
   margin-left: auto;
   margin-right: auto;
