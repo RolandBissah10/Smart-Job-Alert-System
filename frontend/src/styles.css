@@ -2478,6 +2478,13 @@ select {
   box-shadow: var(--shadow);
 }
 
+/* Settings' cards hold single-column forms whose inputs cap at 360px
+   (.profile-input), so letting the cards stretch to the full dashboard
+   width just leaves a huge empty gap next to a left-anchored form. */
+.settings-page .dashboard-card {
+  max-width: 640px;
+}
+
 /* ==================== EMPTY STATE ==================== */
 
 .empty-state {

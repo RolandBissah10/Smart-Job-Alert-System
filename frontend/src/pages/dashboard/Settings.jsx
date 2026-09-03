@@ -107,7 +107,7 @@ export default function Settings() {
   if (loading) return <p className="loading-text">Loading settings...</p>;
 
   return (
-    <div>
+    <div className="settings-page">
       <div className="section-header">
         <div>
           <h2>Settings</h2>
