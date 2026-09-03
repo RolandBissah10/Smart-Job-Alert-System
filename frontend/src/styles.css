@@ -2465,6 +2465,19 @@ select {
   white-space: nowrap;
 }
 
+/* ==================== DASHBOARD CARD (generic) ==================== */
+/* Used by Settings, Alerts' inline form, and Profile's career-paths card -
+   was referenced everywhere but never actually defined, so those sections
+   rendered as bare unstyled text instead of a card. */
+
+.dashboard-card {
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: var(--shadow);
+}
+
 /* ==================== EMPTY STATE ==================== */
 
 .empty-state {
