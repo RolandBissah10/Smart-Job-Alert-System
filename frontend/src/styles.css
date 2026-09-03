@@ -1268,8 +1268,11 @@ main.dashboard-main-wrapper {
   box-shadow: var(--shadow);
 }
 
+/* Sits below the grid, not inside it - a full-width spanning grid item would
+   keep auto-fit from collapsing an empty trailing column on the row above,
+   leaving a gap where a 4th card would go even with only 3 real cards. */
 .analytics-chart-card-wide {
-  grid-column: 1 / -1;
+  margin-top: 20px;
 }
 
 .analytics-chart-card h3 {

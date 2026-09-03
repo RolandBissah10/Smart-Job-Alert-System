@@ -166,25 +166,25 @@ export default function Analytics({ refreshKey }) {
             emptyMessage={data?.profile_complete ? 'No seniority data in your current matches yet.' : 'Set up your profile or CV to see this.'}
           />
         </div>
+      </div>
 
-        <div className="analytics-chart-card analytics-chart-card-wide">
-          <div className="analytics-chart-card-header">
-            <div className="analytics-chart-icon"><Bell size={18} /></div>
-            <div>
-              <h3>Alerts Sent (Last 14 Days)</h3>
-              <p className="analytics-chart-subtitle">How many job alerts you've received per day</p>
-            </div>
+      <div className="analytics-chart-card analytics-chart-card-wide">
+        <div className="analytics-chart-card-header">
+          <div className="analytics-chart-icon"><Bell size={18} /></div>
+          <div>
+            <h3>Alerts Sent (Last 14 Days)</h3>
+            <p className="analytics-chart-subtitle">How many job alerts you've received per day</p>
           </div>
-          <LineChart
-            data={alertsOverTime}
-            emptyMessage="No alerts sent in the last 14 days."
-          />
-          {!hasAnyAlerts && data?.profile_complete && (
-            <p className="analytics-chart-subtitle" style={{ marginTop: 8, marginBottom: 0 }}>
-              Run the pipeline or wait for the next scheduled run to start receiving alerts.
-            </p>
-          )}
         </div>
+        <LineChart
+          data={alertsOverTime}
+          emptyMessage="No alerts sent in the last 14 days."
+        />
+        {!hasAnyAlerts && data?.profile_complete && (
+          <p className="analytics-chart-subtitle" style={{ marginTop: 8, marginBottom: 0 }}>
+            Run the pipeline or wait for the next scheduled run to start receiving alerts.
+          </p>
+        )}
       </div>
 
       {hasMatchInput && (
