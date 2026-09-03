@@ -6,6 +6,7 @@ import { Heart } from 'lucide-react';
 export default function Saved({ refreshKey, onProfileChange }) {
   const [savedJobs, setSavedJobs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState('all');
 
   const load = () => {
     setLoading(true);
@@ -49,28 +50,55 @@ export default function Saved({ refreshKey, onProfileChange }) {
           <p>Browse the Job Feed and save positions you are interested in.</p>
         </div>
       ) : (
-        <div className="tracker-list">
-          {STATUSES.map((status) => {
-            const jobs = byStatus(status);
-            if (jobs.length === 0) return null;
-            return (
-              <div key={status} className="tracker-section">
-                <div className={`tracker-section-header status-${status}`}>
-                  <span className="tracker-section-label">
-                    <span className="tracker-status-dot" />
-                    {STATUS_LABELS[status]}
-                  </span>
-                  <span className="tracker-section-count">{jobs.length}</span>
+        <>
+          <div className="tracker-filter-bar">
+            <button
+              className={`tracker-filter-chip ${statusFilter === 'all' ? 'active' : ''}`}
+              onClick={() => setStatusFilter('all')}
+            >
+              All
+              <span className="tracker-filter-count">{savedJobs.length}</span>
+            </button>
+            {STATUSES.map((status) => (
+              <button
+                key={status}
+                className={`tracker-filter-chip status-${status} ${statusFilter === status ? 'active' : ''}`}
+                onClick={() => setStatusFilter(status)}
+              >
+                <span className="tracker-status-dot" />
+                {STATUS_LABELS[status]}
+                <span className="tracker-filter-count">{byStatus(status).length}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="tracker-list">
+            {(statusFilter === 'all' ? STATUSES : [statusFilter]).map((status) => {
+              const jobs = byStatus(status);
+              if (jobs.length === 0 && statusFilter === 'all') return null;
+              return (
+                <div key={status} className="tracker-section">
+                  <div className={`tracker-section-header status-${status}`}>
+                    <span className="tracker-section-label">
+                      <span className="tracker-status-dot" />
+                      {STATUS_LABELS[status]}
+                    </span>
+                    <span className="tracker-section-count">{jobs.length}</span>
+                  </div>
+                  {jobs.length === 0 ? (
+                    <p className="tracker-section-empty">Nothing in {STATUS_LABELS[status]} yet.</p>
+                  ) : (
+                    <div className="tracker-section-grid">
+                      {jobs.map((job) => (
+                        <TrackerCard key={job.job_id} job={job} onChange={handleCardChange} />
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <div className="tracker-section-grid">
-                  {jobs.map((job) => (
-                    <TrackerCard key={job.job_id} job={job} onChange={handleCardChange} />
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        </>
       )}
     </div>
   );

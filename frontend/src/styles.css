@@ -3038,6 +3038,49 @@ select {
   white-space: nowrap;
 }
 
+.tracker-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.tracker-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 9999px;
+  border: 1px solid var(--border);
+  background: var(--background);
+  color: var(--text-light);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.tracker-filter-chip:hover {
+  border-color: var(--status-color, var(--primary));
+}
+
+.tracker-filter-chip.active {
+  border-color: var(--status-color, var(--primary));
+  background: color-mix(in srgb, var(--status-color, var(--primary)) 12%, var(--background));
+  color: var(--status-color, var(--primary));
+}
+
+.tracker-filter-count {
+  font-size: 0.75rem;
+  opacity: 0.75;
+}
+
+.tracker-section-empty {
+  color: var(--text-light);
+  font-size: 0.9rem;
+  padding: 4px;
+}
+
 .tracker-list {
   display: flex;
   flex-direction: column;
@@ -3052,7 +3095,10 @@ select {
 
 .tracker-section-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  /* auto-fit (not auto-fill): a section with only one or two cards should
+     have them stretch to fill the row instead of leaving reserved-but-empty
+     columns next to them. */
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 16px;
 }
 
@@ -3097,10 +3143,11 @@ select {
 }
 
 .tracker-card {
-  padding: 16px;
+  padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
+  max-width: 480px;
   border-left: 4px solid var(--status-color, var(--border));
 }
 
