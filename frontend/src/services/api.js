@@ -197,8 +197,10 @@ export function searchCompanies(query = '') {
   return request(`/jobs/companies?q=${encodeURIComponent(query)}`);
 }
 
-export function getJobFeed(page = 1, pageSize = 6) {
-  return request(`/jobs/feed?page=${page}&page_size=${pageSize}`);
+export function getJobFeed(page = 1, pageSize = 6, { q = '', sort = 'score' } = {}) {
+  const params = new URLSearchParams({ page, page_size: pageSize, sort });
+  if (q) params.set('q', q);
+  return request(`/jobs/feed?${params.toString()}`);
 }
 
 export function runPipeline() {

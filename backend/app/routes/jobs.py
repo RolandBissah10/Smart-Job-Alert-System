@@ -2,6 +2,7 @@ import hmac
 import time
 import re
 import logging
+from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, Header, Query
 from app.services.scraper import fetch_jobs, save_jobs
@@ -56,6 +57,8 @@ def get_job_feed(
     authorization: str = Header(None),
     page: int = Query(1, ge=1),
     page_size: int = Query(6, ge=1, le=50),
+    q: str = Query("", max_length=200),
+    sort: str = Query("score", pattern="^(score|date)$"),
 ):
     email = require_auth(authorization)
     user = users_collection.find_one({"email": email})
@@ -67,11 +70,12 @@ def get_job_feed(
         return {"jobs": [], "total": 0, "page": page, "page_size": page_size, "profile_required": True}
 
     profile_version = user.get("profile_version", 1)
+    query = q.strip().lower()
 
     # Cache key for job feed - must be scoped per user, not just profile_version,
     # since two different users commonly share the same (default) profile_version
     # and would otherwise be served each other's scored results from the cache.
-    cache_key = f"job_feed:{email}:{profile_version}:{page}:{page_size}"
+    cache_key = f"job_feed:{email}:{profile_version}:{page}:{page_size}:{query}:{sort}"
 
     # Try to get cached data
     cached_data = cache.get(cache_key)
@@ -87,8 +91,24 @@ def get_job_feed(
         jobs = fetch_fresh_jobs(7)
         cache.set(jobs_cache_key, jobs, 600)  # 10 minutes
 
-    # Score jobs; only return those with a positive match score (no random fallback)
+    # Score jobs; only return those with a positive match score (no random fallback).
+    # score_jobs_for_user already sorts by score descending.
     all_scored = score_jobs_for_user(jobs, profile)
+
+    if query:
+        all_scored = [
+            item for item in all_scored
+            if query in item["job"].get("title", "").lower()
+            or query in item["job"].get("company", "").lower()
+            or query in item["job"].get("location", "").lower()
+        ]
+
+    if sort == "date":
+        all_scored = sorted(
+            all_scored,
+            key=lambda item: item["job"].get("posted_date") or item["job"].get("created_at") or datetime.min,
+            reverse=True,
+        )
 
     total = len(all_scored)
     skip = (page - 1) * page_size

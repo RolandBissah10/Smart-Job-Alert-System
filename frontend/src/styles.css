@@ -506,6 +506,43 @@ input:focus, textarea:focus {
   border-bottom: 1px solid var(--border);
 }
 
+.jobs-toolbar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.jobs-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 220px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--background) 90%, var(--surface));
+  color: var(--text-light);
+}
+
+.jobs-search input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 12px 0;
+  font-size: 1rem;
+  color: var(--text);
+  outline: none;
+}
+
+.jobs-sort-select {
+  width: auto;
+  max-width: none;
+  margin-top: 0;
+  flex-shrink: 0;
+}
+
 .jobs-grid {
   display: grid;
   gap: 24px;

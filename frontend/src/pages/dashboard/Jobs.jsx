@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { getJobFeed, getSavedJobs } from '../../services/api';
 import JobCard from '../../components/JobCard';
-import { Zap, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Zap, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 
 const PAGE_SIZE = 6;
 // Matches the backend's job-feed cache TTL, so a poll always has a real
@@ -17,12 +17,32 @@ export default function Jobs({ onNavigate, refreshKey, onProfileChange }) {
     const stored = Number(localStorage.getItem('jobFeedPage'));
     return stored >= 1 ? stored : 1;
   });
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [sort, setSort] = useState('score');
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 400);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // Narrowing/re-sorting the feed changes what "page 1" even means, so jump
+  // back there - but only on a real change, not on the initial mount, which
+  // would otherwise undo the restored page from a previous visit.
+  const skippedFirstSearchSortRun = useRef(false);
+  useEffect(() => {
+    if (!skippedFirstSearchSortRun.current) {
+      skippedFirstSearchSortRun.current = true;
+      return;
+    }
+    setPage(1);
+  }, [debouncedSearch, sort]);
 
   const load = (targetPage = page, { silent = false } = {}) => {
     if (!silent) setLoading(true);
     setError('');
     Promise.all([
-      getJobFeed(targetPage, PAGE_SIZE).catch((err) => ({ error: err.message })),
+      getJobFeed(targetPage, PAGE_SIZE, { q: debouncedSearch, sort }).catch((err) => ({ error: err.message })),
       getSavedJobs().catch(() => []),
     ])
       .then(([feedData, saved]) => {
@@ -34,7 +54,7 @@ export default function Jobs({ onNavigate, refreshKey, onProfileChange }) {
       });
   };
 
-  useEffect(() => { load(page); }, [page, refreshKey]);
+  useEffect(() => { load(page); }, [page, refreshKey, debouncedSearch, sort]);
 
   useEffect(() => {
     localStorage.setItem('jobFeedPage', String(page));
@@ -61,7 +81,7 @@ export default function Jobs({ onNavigate, refreshKey, onProfileChange }) {
       window.removeEventListener('focus', onFocus);
       clearInterval(interval);
     };
-  }, [page]);
+  }, [page, debouncedSearch, sort]);
 
   const isJobSaved = (job) =>
     savedJobs.some((s) => s.job_id === (job._id || job.url));
@@ -110,11 +130,35 @@ export default function Jobs({ onNavigate, refreshKey, onProfileChange }) {
         <button className="button button-secondary" onClick={() => load(page)}>Refresh</button>
       </div>
 
+      <div className="jobs-toolbar">
+        <div className="jobs-search">
+          <Search size={16} />
+          <input
+            type="text"
+            placeholder="Search title, company, or location..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <select
+          className="profile-input profile-select jobs-sort-select"
+          value={sort}
+          onChange={(e) => setSort(e.target.value)}
+        >
+          <option value="score">Sort by match score</option>
+          <option value="date">Sort by newest</option>
+        </select>
+      </div>
+
       {error && <p className="alert alert-error">{error}</p>}
 
       {jobs.length === 0 ? (
         <div className="empty-state">
-          <p>No jobs found yet. Run the pipeline to scrape fresh listings.</p>
+          <p>
+            {debouncedSearch
+              ? `No jobs match "${debouncedSearch}". Try a different search.`
+              : 'No jobs found yet. Run the pipeline to scrape fresh listings.'}
+          </p>
         </div>
       ) : (
         <>
