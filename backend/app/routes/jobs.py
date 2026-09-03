@@ -117,7 +117,7 @@ def run_pipeline(x_pipeline_secret: str = Header(None)):
 
     jobs = fetch_jobs()
     new_jobs = save_jobs(jobs)
-    active_users = list(users_collection.find({"is_active": True}))
+    active_users = list(users_collection.find({"is_active": True, "alerts_paused": {"$ne": True}}))
 
     delivered = []
     for user in active_users:

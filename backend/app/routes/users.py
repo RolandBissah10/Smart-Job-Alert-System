@@ -1,7 +1,10 @@
 from fastapi import APIRouter, HTTPException, Header, UploadFile, File, Body
-from app.models.user import UserSignup, UserUpdate, UserProfile
-from app.db.database import users_collection
-from app.auth_utils import hash_password
+from app.models.user import (
+    UserSignup, UserProfile, ChangePasswordRequest, ChangeEmailRequest,
+    DeleteAccountRequest, AlertsPauseUpdate,
+)
+from app.db.database import users_collection, alert_configs_collection, alerts_collection, saved_jobs_collection
+from app.auth_utils import hash_password, verify_password
 from app.auth import require_auth
 from app.services.cv_parser import extract_text_from_cv, parse_cv
 from app.services.profile_utils import profile_has_structured_data, get_profile_skills
@@ -37,6 +40,7 @@ def serialize_user(user):
             "seniority": cv_data.get("seniority"),
         },
         "is_active": user.get("is_active", True),
+        "alerts_paused": user.get("alerts_paused", False),
         "plan": user.get("plan", "free"),
         "created_at": user.get("created_at"),
     }
@@ -246,26 +250,59 @@ def reset_profile(authorization: str = Header(None)):
     return {"message": "Profile reset successfully"}
 
 
-@router.get("/")
-def list_users():
-    users = [serialize_user(u) for u in users_collection.find({}, {"password": 0})]
-    return users
-
-
-@router.put("/{email}")
-def update_user(email: str, update: UserUpdate):
+@router.put("/password")
+def change_password(body: ChangePasswordRequest, authorization: str = Header(None)):
+    email = require_auth(authorization)
     user = users_collection.find_one({"email": email})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    if not verify_password(body.current_password, user["password"]):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    if len(body.new_password) < 8:
+        raise HTTPException(status_code=400, detail="New password must be at least 8 characters")
 
-    update_data = {k: v for k, v in update.dict().items() if v is not None}
-    users_collection.update_one({"email": email}, {"$set": update_data})
-    return {"message": "User updated successfully"}
+    users_collection.update_one({"email": email}, {"$set": {"password": hash_password(body.new_password)}})
+    return {"message": "Password updated successfully"}
 
 
-@router.delete("/{email}")
-def delete_user(email: str):
-    result = users_collection.delete_one({"email": email})
-    if result.deleted_count == 0:
+@router.put("/email")
+def change_email(body: ChangeEmailRequest, authorization: str = Header(None)):
+    email = require_auth(authorization)
+    user = users_collection.find_one({"email": email})
+    if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    return {"message": "User deleted successfully"}
+    if not verify_password(body.current_password, user["password"]):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    if body.new_email == email:
+        raise HTTPException(status_code=400, detail="That's already your current email")
+    if users_collection.find_one({"email": body.new_email}):
+        raise HTTPException(status_code=409, detail="That email is already in use")
+
+    users_collection.update_one({"email": email}, {"$set": {"email": body.new_email}})
+    return {"message": "Email updated. Please log in again with your new email."}
+
+
+@router.put("/alerts-paused")
+def set_alerts_paused(body: AlertsPauseUpdate, authorization: str = Header(None)):
+    email = require_auth(authorization)
+    result = users_collection.update_one({"email": email}, {"$set": {"alerts_paused": body.paused}})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"message": "Alerts paused" if body.paused else "Alerts resumed", "alerts_paused": body.paused}
+
+
+@router.delete("/me")
+def delete_account(body: DeleteAccountRequest, authorization: str = Header(None)):
+    email = require_auth(authorization)
+    user = users_collection.find_one({"email": email})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if not verify_password(body.current_password, user["password"]):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+
+    user_id = user["_id"]
+    alert_configs_collection.delete_many({"user_id": user_id})
+    alerts_collection.delete_many({"user_id": user_id})
+    saved_jobs_collection.delete_many({"user_email": email})
+    users_collection.delete_one({"_id": user_id})
+    return {"message": "Account deleted"}

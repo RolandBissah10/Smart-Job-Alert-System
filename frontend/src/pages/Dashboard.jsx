@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, User, Briefcase, Kanban,
-  Bell, BarChart2, LogOut, Menu, X, Sun, Moon,
+  Bell, BarChart2, LogOut, Menu, X, Sun, Moon, Settings as SettingsIcon,
 } from 'lucide-react';
 import Overview from './dashboard/Overview';
 import Profile from './dashboard/Profile';
@@ -10,6 +10,7 @@ import Jobs from './dashboard/Jobs';
 import Saved from './dashboard/Saved';
 import Alerts from './dashboard/Alerts';
 import Analytics from './dashboard/Analytics';
+import Settings from './dashboard/Settings';
 
 const NAV_ITEMS = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
@@ -18,6 +19,7 @@ const NAV_ITEMS = [
   { id: 'saved', label: 'Tracker', icon: Kanban },
   { id: 'alerts', label: 'Alerts', icon: Bell },
   { id: 'analytics', label: 'Analytics', icon: BarChart2 },
+  { id: 'settings', label: 'Settings', icon: SettingsIcon },
 ];
 
 const SECTION_COMPONENTS = {
@@ -27,6 +29,7 @@ const SECTION_COMPONENTS = {
   saved: Saved,
   alerts: Alerts,
   analytics: Analytics,
+  settings: Settings,
 };
 
 export default function Dashboard() {

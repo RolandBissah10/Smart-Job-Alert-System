@@ -959,7 +959,10 @@ def _build_adzuna_queries() -> list:
     try:
         from app.db.database import users_collection
         queries = set()
-        for user in users_collection.find({"is_active": True}, {"profile.roles": 1, "profile.industry": 1}):
+        for user in users_collection.find(
+            {"is_active": True, "alerts_paused": {"$ne": True}},
+            {"profile.roles": 1, "profile.industry": 1},
+        ):
             profile = user.get("profile", {})
             for role in (profile.get("roles") or [])[:3]:
                 queries.add(role)

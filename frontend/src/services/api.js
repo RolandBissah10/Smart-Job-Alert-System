@@ -129,6 +129,34 @@ export function updateMatchSource(matchSource) {
   });
 }
 
+export function changePassword(currentPassword, newPassword) {
+  return request('/users/password', {
+    method: 'PUT',
+    body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+  });
+}
+
+export function changeEmail(newEmail, currentPassword) {
+  return request('/users/email', {
+    method: 'PUT',
+    body: JSON.stringify({ new_email: newEmail, current_password: currentPassword }),
+  });
+}
+
+export function setAlertsPaused(paused) {
+  return request('/users/alerts-paused', {
+    method: 'PUT',
+    body: JSON.stringify({ paused }),
+  });
+}
+
+export function deleteAccount(currentPassword) {
+  return request('/users/me', {
+    method: 'DELETE',
+    body: JSON.stringify({ current_password: currentPassword }),
+  });
+}
+
 export function getDashboard() {
   return request('/dashboard/');
 }

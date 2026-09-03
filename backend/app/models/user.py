@@ -45,11 +45,6 @@ class UserLogin(BaseModel):
     password: str
 
 
-class UserUpdate(BaseModel):
-    is_active: Optional[bool] = None
-    plan: Optional[str] = None
-
-
 class RefreshRequest(BaseModel):
     refresh_token: str
 
@@ -61,3 +56,21 @@ class ForgotPasswordRequest(BaseModel):
 class ResetPasswordRequest(BaseModel):
     token: str
     new_password: str
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+
+class ChangeEmailRequest(BaseModel):
+    new_email: EmailStr
+    current_password: str
+
+
+class DeleteAccountRequest(BaseModel):
+    current_password: str
+
+
+class AlertsPauseUpdate(BaseModel):
+    paused: bool
