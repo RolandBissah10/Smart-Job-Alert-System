@@ -1,19 +1,28 @@
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-from app.config import EMAIL_USER, EMAIL_PASS, EMAIL_FROM, FRONTEND_URL
+import requests
+from app.config import RESEND_API_KEY, EMAIL_FROM, FRONTEND_URL
+
+RESEND_API_URL = "https://api.resend.com/emails"
 
 
 def _require_email_configured():
-    if not EMAIL_USER or not EMAIL_PASS:
-        raise ValueError("EMAIL_USER and EMAIL_PASS must be set in environment variables")
+    if not RESEND_API_KEY:
+        raise ValueError("RESEND_API_KEY must be set in environment variables")
 
 
-def _send_mime_message(msg: MIMEMultipart):
-    with smtplib.SMTP("smtp.gmail.com", 587) as server:
-        server.starttls()
-        server.login(EMAIL_USER, EMAIL_PASS)
-        server.send_message(msg)
+def _send_via_resend(recipient: str, subject: str, html: str, text: str):
+    response = requests.post(
+        RESEND_API_URL,
+        headers={"Authorization": f"Bearer {RESEND_API_KEY}"},
+        json={
+            "from": EMAIL_FROM,
+            "to": [recipient],
+            "subject": subject,
+            "html": html,
+            "text": text,
+        },
+        timeout=15,
+    )
+    response.raise_for_status()
 
 
 def _build_html(jobs, alert_name=None):
@@ -180,16 +189,14 @@ def send_email(recipient: str, jobs, alert_name=None):
     count = len(jobs)
     plural = "s" if count != 1 else ""
     subject_suffix = f"— {alert_name}" if alert_name else "— Smart Job Alert"
+    subject = f"\U0001f514 {count} New Job Alert{plural} {subject_suffix}"
 
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = f"\U0001f514 {count} New Job Alert{plural} {subject_suffix}"
-    msg["From"] = EMAIL_FROM or EMAIL_USER
-    msg["To"] = recipient
-
-    msg.attach(MIMEText(_build_plain(jobs, alert_name), "plain", "utf-8"))
-    msg.attach(MIMEText(_build_html(jobs, alert_name), "html", "utf-8"))
-
-    _send_mime_message(msg)
+    _send_via_resend(
+        recipient,
+        subject,
+        _build_html(jobs, alert_name),
+        _build_plain(jobs, alert_name),
+    )
 
 
 def _build_reset_plain(reset_link):
@@ -260,12 +267,9 @@ def _build_reset_html(reset_link):
 def send_password_reset_email(recipient: str, reset_link: str):
     _require_email_configured()
 
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = "Reset your Smart Job Alert password"
-    msg["From"] = EMAIL_FROM or EMAIL_USER
-    msg["To"] = recipient
-
-    msg.attach(MIMEText(_build_reset_plain(reset_link), "plain", "utf-8"))
-    msg.attach(MIMEText(_build_reset_html(reset_link), "html", "utf-8"))
-
-    _send_mime_message(msg)
+    _send_via_resend(
+        recipient,
+        "Reset your Smart Job Alert password",
+        _build_reset_html(reset_link),
+        _build_reset_plain(reset_link),
+    )
