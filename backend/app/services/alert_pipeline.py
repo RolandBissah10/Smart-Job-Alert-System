@@ -3,6 +3,7 @@ Actions cron workflow (and manual dispatch) calls to scrape jobs and send
 matching-job alert emails to every active user.
 """
 
+import logging
 from datetime import datetime
 
 from app.db.database import alert_configs_collection, alerts_collection
@@ -16,6 +17,8 @@ from app.services.matcher import (
 from app.services.notifier import send_email
 from app.services.profile_utils import build_match_profile
 from app.services.scoring import compute_match
+
+logger = logging.getLogger(__name__)
 
 MAX_JOBS_PER_ALERT = 20
 CRITERIA_OVERRIDE_FIELDS = ["roles", "industry", "location", "job_type", "match_source"]
@@ -106,6 +109,7 @@ def _run_one_alert(user: dict, base_profile: dict, alert_id, alert_name, criteri
                 "job_company": job.get("company", ""),
                 "job_url": job.get("url", ""),
                 "sent_at": now,
+                "email_sent": True,
             })
             inserted_ids.append(result.inserted_id)
             jobs_to_send.append(job)
@@ -117,10 +121,19 @@ def _run_one_alert(user: dict, base_profile: dict, alert_id, alert_name, criteri
 
     try:
         send_email(user["email"], jobs_to_send, alert_name=alert_name)
-    except Exception:
+    except Exception as e:
+        # The match itself is real and worth surfacing in-app even if the email
+        # never lands - only the email step failed, so keep the records (flagged)
+        # instead of deleting them. Deleting here would mean a broken email
+        # config silently erases the in-app notification fallback too, which
+        # defeats the point of having one.
+        logger.error(f"send_email failed for {user['email']}: {e}")
         if inserted_ids:
-            alerts_collection.delete_many({"_id": {"$in": inserted_ids}})
-        raise
+            alerts_collection.update_many(
+                {"_id": {"$in": inserted_ids}},
+                {"$set": {"email_sent": False}},
+            )
+        return []
 
     return jobs_to_send
 

@@ -11,6 +11,12 @@ import Saved from './dashboard/Saved';
 import Alerts from './dashboard/Alerts';
 import Analytics from './dashboard/Analytics';
 import Settings from './dashboard/Settings';
+import NotificationBell from '../components/NotificationBell';
+import { getNotifications, markNotificationsSeen } from '../services/api';
+
+// Matches the other dashboard polling intervals - this doesn't need to be
+// near-instant, just frequent enough that a badge shows up without a reload.
+const NOTIFICATIONS_REFRESH_INTERVAL = 5 * 60 * 1000;
 
 const NAV_ITEMS = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
@@ -47,6 +53,8 @@ export default function Dashboard() {
   const [darkMode, setDarkMode] = useState(
     document.documentElement.getAttribute('data-theme') === 'dark'
   );
+  const [notifications, setNotifications] = useState({ items: [], unread_count: 0 });
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -58,6 +66,27 @@ export default function Dashboard() {
     setEmail(localStorage.getItem('userEmail') || '');
     setUsername(localStorage.getItem('username') || '');
   }, [navigate]);
+
+  useEffect(() => {
+    const loadNotifications = () => {
+      getNotifications().then(setNotifications).catch(console.error);
+    };
+    loadNotifications();
+    const interval = setInterval(loadNotifications, NOTIFICATIONS_REFRESH_INTERVAL);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleToggleNotifications = () => {
+    setNotificationsOpen((wasOpen) => {
+      const opening = !wasOpen;
+      if (opening && notifications.unread_count > 0) {
+        markNotificationsSeen()
+          .then(() => setNotifications((prev) => ({ ...prev, unread_count: 0 })))
+          .catch(console.error);
+      }
+      return opening;
+    });
+  };
 
   const handleSectionChange = (id) => {
     setSection(id);
@@ -122,6 +151,14 @@ export default function Dashboard() {
           )}
           <div className="sidebar-user">{email}</div>
           <div className="sidebar-footer-actions">
+            <NotificationBell
+              notifications={notifications}
+              open={notificationsOpen}
+              onToggle={handleToggleNotifications}
+              onClose={() => setNotificationsOpen(false)}
+              triggerClassName="sidebar-icon-btn"
+              placement="sidebar"
+            />
             <button className="sidebar-icon-btn" onClick={toggleDark} title="Toggle theme">
               {darkMode ? <Sun size={18} /> : <Moon size={18} />}
             </button>
@@ -155,6 +192,13 @@ export default function Dashboard() {
             </h2>
           </div>
           <div className="topbar-actions">
+            <NotificationBell
+              notifications={notifications}
+              open={notificationsOpen}
+              onToggle={handleToggleNotifications}
+              onClose={() => setNotificationsOpen(false)}
+              triggerClassName="topbar-icon-btn"
+            />
             <button className="topbar-icon-btn" onClick={toggleDark} aria-label="Toggle theme" title="Toggle theme">
               {darkMode ? <Sun size={18} /> : <Moon size={18} />}
             </button>

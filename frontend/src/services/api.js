@@ -165,6 +165,14 @@ export function getAnalytics() {
   return request('/dashboard/analytics');
 }
 
+export function getNotifications() {
+  return request('/notifications/');
+}
+
+export function markNotificationsSeen() {
+  return request('/notifications/seen', { method: 'PUT' });
+}
+
 export function getAlerts() {
   return request('/alerts/');
 }

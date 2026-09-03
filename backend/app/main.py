@@ -2,7 +2,7 @@ import time
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from app.routes import users, auth, jobs, saved_jobs, dashboard, alerts
+from app.routes import users, auth, jobs, saved_jobs, dashboard, alerts, notifications
 from app.config import ALLOWED_ORIGINS
 from app.performance import get_performance_report
 
@@ -22,6 +22,7 @@ app.include_router(jobs.router)
 app.include_router(saved_jobs.router)
 app.include_router(dashboard.router)
 app.include_router(alerts.router)
+app.include_router(notifications.router)
 
 
 @app.exception_handler(Exception)
