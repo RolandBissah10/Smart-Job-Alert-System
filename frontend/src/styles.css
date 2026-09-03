@@ -2483,7 +2483,7 @@ select {
    left edge instead of the title sitting flush left while the cards
    float centered underneath it. */
 .settings-page {
-  max-width: 560px;
+  max-width: 760px;
   margin-left: auto;
   margin-right: auto;
   display: flex;
