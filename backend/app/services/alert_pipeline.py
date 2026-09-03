@@ -4,6 +4,7 @@ matching-job alert emails to every active user.
 """
 
 import logging
+import time
 from datetime import datetime
 
 from app.db.database import alert_configs_collection, alerts_collection
@@ -21,6 +22,7 @@ from app.services.scoring import compute_match
 logger = logging.getLogger(__name__)
 
 MAX_JOBS_PER_ALERT = 20
+EMAIL_RETRY_DELAYS_SECONDS = [3, 8]  # 3 attempts total: first try, then these two
 CRITERIA_OVERRIDE_FIELDS = ["roles", "industry", "location", "job_type", "match_source"]
 
 # The synthetic default alert (used for users with no explicit alert_configs)
@@ -30,6 +32,23 @@ CRITERIA_OVERRIDE_FIELDS = ["roles", "industry", "location", "job_type", "match_
 # telling them would contradict what they configured.
 MIN_JOBS_BEFORE_FALLBACK = 10
 FALLBACK_FRESHNESS_DAYS = 30
+
+
+def _send_email_with_retry(recipient: str, jobs: list, alert_name) -> None:
+    """A single transient SMTP hiccup shouldn't cost a real match its email -
+    retries a couple of times with a short delay before giving up. Raises the
+    last exception if every attempt fails."""
+    last_error = None
+    for attempt, delay in enumerate([0] + EMAIL_RETRY_DELAYS_SECONDS):
+        if delay:
+            time.sleep(delay)
+        try:
+            send_email(recipient, jobs, alert_name=alert_name)
+            return
+        except Exception as e:
+            last_error = e
+            logger.warning(f"send_email attempt {attempt + 1} failed for {recipient}: {e}")
+    raise last_error
 
 
 def _effective_profile(base_profile: dict, criteria: dict) -> dict:
@@ -120,7 +139,7 @@ def _run_one_alert(user: dict, base_profile: dict, alert_id, alert_name, criteri
         return []
 
     try:
-        send_email(user["email"], jobs_to_send, alert_name=alert_name)
+        _send_email_with_retry(user["email"], jobs_to_send, alert_name)
     except Exception as e:
         # The match itself is real and worth surfacing in-app even if the email
         # never lands - only the email step failed, so keep the records (flagged)
