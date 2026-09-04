@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, User, Briefcase, Kanban,
-  Bell, BarChart2, LogOut, Menu, X, Sun, Moon, Settings as SettingsIcon,
+  Bell, BarChart2, LogOut, Menu, X, Sun, Moon, Settings as SettingsIcon, HelpCircle,
 } from 'lucide-react';
 import Overview from './dashboard/Overview';
 import Profile from './dashboard/Profile';
@@ -12,6 +12,7 @@ import Alerts from './dashboard/Alerts';
 import Analytics from './dashboard/Analytics';
 import Settings from './dashboard/Settings';
 import NotificationBell from '../components/NotificationBell';
+import TourGuide from '../components/TourGuide';
 import { getNotifications, markNotificationsSeen } from '../services/api';
 
 // Matches the other dashboard polling intervals - this doesn't need to be
@@ -26,6 +27,57 @@ const NAV_ITEMS = [
   { id: 'alerts', label: 'Alerts', icon: Bell },
   { id: 'analytics', label: 'Analytics', icon: BarChart2 },
   { id: 'settings', label: 'Settings', icon: SettingsIcon },
+];
+
+const TOUR_STEPS = [
+  {
+    title: 'Welcome to Smart Job Alert!',
+    text: "Here's a quick, 2-minute tour of where everything lives. Skip anytime with the X.",
+  },
+  {
+    selector: '[data-tour="overview"]',
+    title: 'Overview',
+    text: 'Your at-a-glance dashboard — key stats, and a button to manually run the matching pipeline whenever you want fresh results.',
+  },
+  {
+    selector: '[data-tour="profile"]',
+    title: 'Profile',
+    text: "Set up your matching profile, upload a CV, or both — this is what decides which jobs you'll be shown.",
+  },
+  {
+    selector: '[data-tour="jobs"]',
+    title: 'Job Feed',
+    text: 'Every job matched to your profile, with a match score, search, and sorting.',
+  },
+  {
+    selector: '[data-tour="saved"]',
+    title: 'Tracker',
+    text: 'Save jobs here and move them through Saved → Applied → Interview → Offer/Rejected, with notes per application.',
+  },
+  {
+    selector: '[data-tour="alerts"]',
+    title: 'Alerts',
+    text: 'Create custom alerts for specific roles, companies, or search criteria beyond your main profile.',
+  },
+  {
+    selector: '[data-tour="analytics"]',
+    title: 'Analytics',
+    text: 'Trends behind your matches — score distribution, top skills in demand, and your alert history.',
+  },
+  {
+    selector: '[data-tour="settings"]',
+    title: 'Settings',
+    text: 'Change your password or email, pause alerts temporarily, or delete your account.',
+  },
+  {
+    selector: '[data-tour="notifications"]',
+    title: 'Notifications',
+    text: "New job matches show up here too — even on the rare occasion the alert email doesn't arrive.",
+  },
+  {
+    title: "That's it!",
+    text: 'Come back to this tour anytime from the help icon next to the theme toggle.',
+  },
 ];
 
 const SECTION_COMPONENTS = {
@@ -55,6 +107,7 @@ export default function Dashboard() {
   );
   const [notifications, setNotifications] = useState({ items: [], unread_count: 0 });
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [tourActive, setTourActive] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -66,6 +119,25 @@ export default function Dashboard() {
     setEmail(localStorage.getItem('userEmail') || '');
     setUsername(localStorage.getItem('username') || '');
   }, [navigate]);
+
+  // Auto-start once for a first-time visitor, after the layout has settled.
+  useEffect(() => {
+    if (localStorage.getItem('tourCompleted')) return;
+    const timer = setTimeout(() => startTour(), 900);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const startTour = () => {
+    setSidebarOpen(true); // sidebar items need to be visible/on-screen to spotlight on mobile
+    setTourActive(true);
+  };
+
+  const finishTour = () => {
+    setTourActive(false);
+    setSidebarOpen(false);
+    localStorage.setItem('tourCompleted', 'true');
+  };
 
   useEffect(() => {
     const loadNotifications = () => {
@@ -136,6 +208,7 @@ export default function Dashboard() {
           {NAV_ITEMS.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
+              data-tour={id}
               className={`sidebar-item ${section === id ? 'active' : ''}`}
               onClick={() => handleSectionChange(id)}
             >
@@ -151,14 +224,19 @@ export default function Dashboard() {
           )}
           <div className="sidebar-user">{email}</div>
           <div className="sidebar-footer-actions">
-            <NotificationBell
-              notifications={notifications}
-              open={notificationsOpen}
-              onToggle={handleToggleNotifications}
-              onClose={() => setNotificationsOpen(false)}
-              triggerClassName="sidebar-icon-btn"
-              placement="sidebar"
-            />
+            <div data-tour="notifications">
+              <NotificationBell
+                notifications={notifications}
+                open={notificationsOpen}
+                onToggle={handleToggleNotifications}
+                onClose={() => setNotificationsOpen(false)}
+                triggerClassName="sidebar-icon-btn"
+                placement="sidebar"
+              />
+            </div>
+            <button className="sidebar-icon-btn" onClick={startTour} title="Take a tour">
+              <HelpCircle size={18} />
+            </button>
             <button className="sidebar-icon-btn" onClick={toggleDark} title="Toggle theme">
               {darkMode ? <Sun size={18} /> : <Moon size={18} />}
             </button>
@@ -199,6 +277,9 @@ export default function Dashboard() {
               onClose={() => setNotificationsOpen(false)}
               triggerClassName="topbar-icon-btn"
             />
+            <button className="topbar-icon-btn" onClick={startTour} aria-label="Take a tour" title="Take a tour">
+              <HelpCircle size={18} />
+            </button>
             <button className="topbar-icon-btn" onClick={toggleDark} aria-label="Toggle theme" title="Toggle theme">
               {darkMode ? <Sun size={18} /> : <Moon size={18} />}
             </button>
@@ -222,6 +303,8 @@ export default function Dashboard() {
           })}
         </div>
       </div>
+
+      {tourActive && <TourGuide steps={TOUR_STEPS} onFinish={finishTour} />}
     </div>
   );
 }
