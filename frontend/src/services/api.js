@@ -60,7 +60,8 @@ async function request(path, options = {}, isRetry = false) {
     return data;
   } catch (error) {
     if (error instanceof TypeError) {
-      throw new Error(`Could not connect to backend at ${BASE_URL}. Check VITE_API_URL, CORS, and whether the Render service is live.`);
+      console.error(`Network error reaching ${BASE_URL}${path}:`, error);
+      throw new Error('Unable to reach the server. Please check your internet connection and try again.');
     }
     throw error;
   }
