@@ -162,23 +162,3 @@ def run_pipeline(x_pipeline_secret: str = Header(None)):
         "active_users_checked": len(active_users),
         "duration_seconds": duration_seconds,
     }
-
-
-# TEMPORARY - diagnosing a 100% production email-send failure rate since
-# 2026-09-03 (every alerts_collection record has email_sent=False). Sending
-# works fine locally with the same notifier code, so this surfaces the exact
-# exception Render's environment produces without needing dashboard/log
-# access. Remove once the root cause is confirmed and fixed.
-@router.post("/debug-email-test")
-def debug_email_test(authorization: str = Header(None)):
-    email = require_auth(authorization)
-    from app.services.notifier import send_email
-    try:
-        send_email(
-            email,
-            [{"title": "Diagnostic Test Job", "company": "Diagnostics", "location": "Remote", "url": "https://example.com"}],
-            alert_name="Diagnostic",
-        )
-        return {"ok": True}
-    except Exception as e:
-        return {"ok": False, "error_type": type(e).__name__, "error": str(e)}
