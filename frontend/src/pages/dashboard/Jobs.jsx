@@ -130,7 +130,7 @@ export default function Jobs({ onNavigate, refreshKey, onProfileChange }) {
         <button className="button button-secondary" onClick={() => load(page)}>Refresh</button>
       </div>
 
-      <div className="jobs-toolbar">
+      <div className="jobs-toolbar" data-tour="job-search">
         <div className="jobs-search">
           <Search size={16} />
           <input

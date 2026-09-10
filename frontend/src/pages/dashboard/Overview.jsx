@@ -78,6 +78,7 @@ export default function Overview({ onNavigate, refreshKey }) {
             </button>
             <button
               className="button"
+              data-tour="run-pipeline"
               onClick={handleRunPipeline}
               disabled={runningPipeline || refreshing}
               title="Scrape fresh jobs and run the matching pipeline"

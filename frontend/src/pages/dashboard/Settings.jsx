@@ -202,7 +202,7 @@ export default function Settings() {
         </form>
       </div>
 
-      <div className="dashboard-card settings-card">
+      <div className="dashboard-card settings-card" data-tour="alert-pause">
         <div className="analytics-chart-card-header">
           <div className="analytics-chart-icon">{alertsPaused ? <BellOff size={18} /> : <Bell size={18} />}</div>
           <div>

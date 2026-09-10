@@ -51,7 +51,7 @@ export default function Saved({ refreshKey, onProfileChange }) {
         </div>
       ) : (
         <>
-          <div className="tracker-filter-bar">
+          <div className="tracker-filter-bar" data-tour="tracker-filter">
             <button
               className={`tracker-filter-chip ${statusFilter === 'all' ? 'active' : ''}`}
               onClick={() => setStatusFilter('all')}

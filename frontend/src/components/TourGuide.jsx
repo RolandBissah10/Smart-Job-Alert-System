@@ -1,36 +1,53 @@
-import { useState, useLayoutEffect } from 'react';
+import { useState, useLayoutEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 
 const MARGIN = 8;
 const CARD_WIDTH = 300;
+const POLL_INTERVAL_MS = 200;
+const MAX_POLL_ATTEMPTS = 10; // 2s - covers a section's initial data fetch, not just layout settling
 
-export default function TourGuide({ steps, onFinish }) {
+export default function TourGuide({ steps, onFinish, onStepEnter }) {
   const [stepIndex, setStepIndex] = useState(0);
   const [rect, setRect] = useState(null);
+  const onStepEnterRef = useRef(onStepEnter);
+  onStepEnterRef.current = onStepEnter;
 
   const step = steps[stepIndex];
   const isFirst = stepIndex === 0;
   const isLast = stepIndex === steps.length - 1;
 
   useLayoutEffect(() => {
+    // Lets the host page switch to whatever section/state this step targets
+    // (e.g. a step spotlighting a Job Feed control needs the Jobs section
+    // active) before we go looking for the element.
+    onStepEnterRef.current?.(step);
+
     if (!step.selector) {
       setRect(null);
       return undefined;
     }
+
     const measure = () => {
       const el = document.querySelector(step.selector);
       setRect(el ? el.getBoundingClientRect() : null);
+      return !!el;
     };
+
     measure();
-    // The sidebar drawer (mobile) takes a moment to slide open before the
-    // target's real position is stable enough to measure.
-    const settle = setTimeout(measure, 220);
+    // Keep polling for a bit: the sidebar drawer (mobile) takes a moment to
+    // slide open, and a step that just switched sections may target an
+    // element still behind that section's initial "Loading..." data fetch.
+    let attempts = 0;
+    const poll = setInterval(() => {
+      attempts += 1;
+      if (measure() || attempts >= MAX_POLL_ATTEMPTS) clearInterval(poll);
+    }, POLL_INTERVAL_MS);
     window.addEventListener('resize', measure);
     return () => {
-      clearTimeout(settle);
+      clearInterval(poll);
       window.removeEventListener('resize', measure);
     };
-  }, [stepIndex, step.selector]);
+  }, [stepIndex]);
 
   const next = () => (isLast ? onFinish() : setStepIndex((i) => i + 1));
   const back = () => setStepIndex((i) => Math.max(0, i - 1));

@@ -29,45 +29,92 @@ const NAV_ITEMS = [
   { id: 'settings', label: 'Settings', icon: SettingsIcon },
 ];
 
+// Each step can force the dashboard to a given `section` before it measures
+// its target (needed for anything beyond a sidebar nav button). On mobile,
+// `requiresSidebarOpen: false` closes the drawer first so the spotlighted
+// content isn't hidden underneath it - it defaults to open, which is right
+// for the nav-highlighting steps.
 const TOUR_STEPS = [
   {
     title: 'Welcome to Smart Job Alert!',
-    text: "Here's a quick, 2-minute tour of where everything lives. Skip anytime with the X.",
+    text: "Here's a quick tour of where everything lives and the key actions you can take. Skip anytime with the X.",
   },
   {
     selector: '[data-tour="overview"]',
+    section: 'overview',
     title: 'Overview',
-    text: 'Your at-a-glance dashboard — key stats, and a button to manually run the matching pipeline whenever you want fresh results.',
+    text: 'Your at-a-glance dashboard — key stats and recent alerts.',
+  },
+  {
+    selector: '[data-tour="run-pipeline"]',
+    section: 'overview',
+    requiresSidebarOpen: false,
+    title: 'Run Pipeline',
+    text: "Scrape fresh jobs and re-run matching on demand, instead of waiting for the next scheduled run.",
   },
   {
     selector: '[data-tour="profile"]',
+    section: 'profile',
     title: 'Profile',
     text: "Set up your matching profile, upload a CV, or both — this is what decides which jobs you'll be shown.",
   },
   {
     selector: '[data-tour="jobs"]',
+    section: 'jobs',
     title: 'Job Feed',
-    text: 'Every job matched to your profile, with a match score, search, and sorting.',
+    text: 'Every job matched to your profile, with a match score.',
+  },
+  {
+    selector: '[data-tour="job-search"]',
+    section: 'jobs',
+    requiresSidebarOpen: false,
+    title: 'Search & sort',
+    text: 'Narrow the feed by keyword, or sort by match score, date, or company.',
   },
   {
     selector: '[data-tour="saved"]',
+    section: 'saved',
     title: 'Tracker',
     text: 'Save jobs here and move them through Saved → Applied → Interview → Offer/Rejected, with notes per application.',
   },
   {
+    selector: '[data-tour="tracker-filter"]',
+    section: 'saved',
+    requiresSidebarOpen: false,
+    title: 'Filter by status',
+    text: 'Jump straight to jobs at a specific stage instead of scrolling the whole board.',
+  },
+  {
     selector: '[data-tour="alerts"]',
+    section: 'alerts',
     title: 'Alerts',
     text: 'Create custom alerts for specific roles, companies, or search criteria beyond your main profile.',
   },
   {
+    selector: '[data-tour="new-alert"]',
+    section: 'alerts',
+    requiresSidebarOpen: false,
+    title: 'New Alert',
+    text: 'Set up a dedicated alert — e.g. only senior roles, or a shortlist of target companies.',
+  },
+  {
     selector: '[data-tour="analytics"]',
+    section: 'analytics',
     title: 'Analytics',
     text: 'Trends behind your matches — score distribution, top skills in demand, and your alert history.',
   },
   {
     selector: '[data-tour="settings"]',
+    section: 'settings',
     title: 'Settings',
-    text: 'Change your password or email, pause alerts temporarily, or delete your account.',
+    text: 'Change your password or email, or delete your account.',
+  },
+  {
+    selector: '[data-tour="alert-pause"]',
+    section: 'settings',
+    requiresSidebarOpen: false,
+    title: 'Pause alerts anytime',
+    text: 'Going quiet for a while? Pause alert emails without losing your profile or alert setup.',
   },
   {
     selector: '[data-tour="notifications"]',
@@ -137,6 +184,18 @@ export default function Dashboard() {
     setTourActive(false);
     setSidebarOpen(false);
     localStorage.setItem('tourCompleted', 'true');
+  };
+
+  // Drives the dashboard to match whatever a tour step is about to spotlight
+  // - switching section for steps that target page content, and closing the
+  // mobile drawer first so that content isn't hidden underneath it.
+  const handleTourStepEnter = (step) => {
+    if (step.section) {
+      setSection(step.section);
+      setVisitedSections((prev) => (prev.has(step.section) ? prev : new Set(prev).add(step.section)));
+      localStorage.setItem('dashboardSection', step.section);
+    }
+    setSidebarOpen(step.requiresSidebarOpen !== false);
   };
 
   useEffect(() => {
@@ -304,7 +363,9 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {tourActive && <TourGuide steps={TOUR_STEPS} onFinish={finishTour} />}
+      {tourActive && (
+        <TourGuide steps={TOUR_STEPS} onFinish={finishTour} onStepEnter={handleTourStepEnter} />
+      )}
     </div>
   );
 }

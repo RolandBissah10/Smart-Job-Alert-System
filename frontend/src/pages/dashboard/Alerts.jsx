@@ -171,7 +171,7 @@ export default function Alerts({ refreshKey }) {
         </div>
         <div className="section-header-actions">
           {!showForm && (
-            <button className="button" onClick={startCreate}>
+            <button className="button" data-tour="new-alert" onClick={startCreate}>
               <Plus size={16} /> New Alert
             </button>
           )}
