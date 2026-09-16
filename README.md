@@ -231,7 +231,7 @@ in well under a second with no setup. Routes that touch MongoDB aren't covered y
 ## 📌 Notes
 
 - Use a secure `JWT_SECRET`
-- Set `EMAIL_USER` and `EMAIL_PASS` carefully
+- Set `SENDGRID_API_KEY` and `EMAIL_FROM` carefully (`EMAIL_FROM` must match a Single Sender verified in the SendGrid dashboard). Alert/reset emails send over SendGrid's HTTPS API rather than SMTP, since outbound SMTP is blocked on Render.
 - Do not hardcode credentials in source control
 - Start with one job source and expand safely
 

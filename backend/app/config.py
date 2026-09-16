@@ -12,9 +12,11 @@ def _parse_csv_env(name: str, default: str = "") -> list[str]:
 MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017")
 JWT_SECRET = os.getenv("JWT_SECRET", "change-this-secret")
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
-EMAIL_USER = os.getenv("EMAIL_USER", "")
-EMAIL_PASS = os.getenv("EMAIL_PASS", "")
-EMAIL_FROM = os.getenv("EMAIL_FROM", EMAIL_USER)
+SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY", "")
+# Must be the exact address verified as a Single Sender in the SendGrid
+# dashboard (Settings -> Sender Authentication) - SendGrid rejects sends from
+# any other address until a whole domain is verified instead.
+EMAIL_FROM = os.getenv("EMAIL_FROM", "")
 PIPELINE_SECRET = os.getenv("PIPELINE_SECRET", "")
 ADZUNA_APP_ID = os.getenv("ADZUNA_APP_ID", "")
 ADZUNA_APP_KEY = os.getenv("ADZUNA_APP_KEY", "")
