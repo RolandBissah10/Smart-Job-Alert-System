@@ -18,8 +18,6 @@ SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY", "")
 # any other address until a whole domain is verified instead.
 EMAIL_FROM = os.getenv("EMAIL_FROM", "")
 PIPELINE_SECRET = os.getenv("PIPELINE_SECRET", "")
-ADZUNA_APP_ID = os.getenv("ADZUNA_APP_ID", "")
-ADZUNA_APP_KEY = os.getenv("ADZUNA_APP_KEY", "")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:4173").rstrip("/")
 ALLOWED_ORIGINS = _parse_csv_env(
     "ALLOWED_ORIGINS",

@@ -5,14 +5,13 @@ import re
 from bs4 import BeautifulSoup
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from app.db.database import jobs_collection
-from app.config import ADZUNA_APP_ID, ADZUNA_APP_KEY
 from app.cache import cache
 from app.services.skills_taxonomy import extract_skills_from_text
 from app.services.seniority import classify_seniority_from_title
 from app.services.text_utils import clean_text as _clean_text
 from datetime import datetime
 from email.utils import parsedate_to_datetime
-from urllib.parse import urljoin, urlsplit, urlunsplit
+from urllib.parse import urljoin
 import logging
 
 logger = logging.getLogger(__name__)
@@ -954,81 +953,6 @@ def _fetch_turntabl():
     )
 
 
-def _build_adzuna_queries() -> list:
-    fallback = ["software developer", "data analyst", "marketing manager", "financial analyst", "registered nurse"]
-    try:
-        from app.db.database import users_collection
-        queries = set()
-        for user in users_collection.find(
-            {"is_active": True, "alerts_paused": {"$ne": True}},
-            {"profile.roles": 1, "profile.industry": 1},
-        ):
-            profile = user.get("profile", {})
-            for role in (profile.get("roles") or [])[:3]:
-                queries.add(role)
-            industry = (profile.get("industry") or "").strip()
-            if industry:
-                queries.add(industry.replace("_", " "))
-        return list(queries)[:10] if queries else fallback
-    except Exception:
-        return fallback
-
-
-def _strip_tracking_params(url: str) -> str:
-    """Drops the query string from a URL, keeping only scheme/host/path. Adzuna's
-    redirect_url embeds a session token (se=) that's regenerated on every API
-    call for the same job, so deduping on the raw URL let the same posting get
-    re-inserted as "new" on every scrape - stripping it gives a stable identity."""
-    parts = urlsplit(url)
-    return urlunsplit((parts.scheme, parts.netloc, parts.path, "", ""))
-
-
-def _fetch_adzuna():
-    if not ADZUNA_APP_ID or not ADZUNA_APP_KEY:
-        return []
-
-    import time
-    queries = _build_adzuna_queries()
-    jobs = []
-
-    for query in queries:
-        try:
-            r = requests.get(
-                "https://api.adzuna.com/v1/api/jobs/us/search/1",
-                params={
-                    "app_id": ADZUNA_APP_ID,
-                    "app_key": ADZUNA_APP_KEY,
-                    "results_per_page": 20,
-                    "what": query,
-                    "content-type": "application/json",
-                },
-                headers=HEADERS,
-                timeout=TIMEOUT,
-            )
-            if r.status_code == 429:
-                logger.warning("Adzuna rate limit hit — stopping early")
-                break
-            r.raise_for_status()
-            for item in r.json().get("results", []):
-                posted_date = _parse_date_safe(item.get("created"))
-                redirect_url = item.get("redirect_url")
-                jobs.append({
-                    "title": item.get("title", ""),
-                    "company": item.get("company", {}).get("display_name", ""),
-                    "location": item.get("location", {}).get("display_name", ""),
-                    "url": _strip_tracking_params(redirect_url) if redirect_url else redirect_url,
-                    "source": "adzuna",
-                    "description": item.get("description", "")[:500],
-                    "employment_type": item.get("contract_time") or item.get("contract_type") or None,
-                    "posted_date": posted_date,
-                    "date_is_estimated": posted_date is None,
-                })
-            time.sleep(1)
-        except Exception as e:
-            logger.error(f"Adzuna '{query}' failed: {e}")
-
-    logger.info(f"Adzuna: {len(jobs)} jobs")
-    return jobs
 
 
 def fetch_jobs():
@@ -1045,7 +969,6 @@ def fetch_jobs():
         _fetch_effyis_group,
         _fetch_africarrieres_ghana,
         _fetch_arc_ghana,
-        _fetch_adzuna,
         _fetch_canonical,
         _fetch_turing,
         _fetch_mkopa,
