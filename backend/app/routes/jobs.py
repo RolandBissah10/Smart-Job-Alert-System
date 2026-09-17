@@ -162,3 +162,20 @@ def run_pipeline(x_pipeline_secret: str = Header(None)):
         "active_users_checked": len(active_users),
         "duration_seconds": duration_seconds,
     }
+
+
+# TEMPORARY - re-verifying SendGrid after the Render env vars were re-saved.
+# Remove once confirmed working.
+@router.post("/debug-email-test")
+def debug_email_test(authorization: str = Header(None)):
+    email = require_auth(authorization)
+    from app.services.notifier import send_email
+    try:
+        send_email(
+            email,
+            [{"title": "Diagnostic Test Job", "company": "Diagnostics", "location": "Remote", "url": "https://example.com"}],
+            alert_name="Diagnostic",
+        )
+        return {"ok": True}
+    except Exception as e:
+        return {"ok": False, "error_type": type(e).__name__, "error": str(e)}
