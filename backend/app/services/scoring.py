@@ -12,14 +12,6 @@ from app.services.seniority import (
     classify_seniority_from_profile_level,
     explain_level_match,
 )
-from app.services.skills_taxonomy import get_transferable_skills
-from app.services.career_paths import classify_career_paths
-from app.services.role_synonyms import expand_role_terms
-
-# Weight given to a job-required skill the candidate doesn't have directly, but
-# has evidence of via a related skill (e.g. job wants "Test Automation", candidate
-# has "Selenium"). Counts for something, but less than an exact match.
-TRANSFERABLE_CREDIT = 0.5
 
 # Bonus for a job at one of the candidate's watch-listed companies, scaled by how
 # badly they want to work there. Additive only, applied after the weighted
@@ -52,40 +44,23 @@ def score_skills_dimension(job: dict, profile: dict) -> dict:
     candidate_skills = _candidate_skill_set(profile)
 
     if job_skills:
-        # Build a reverse lookup once: which job-required skills does each of the
-        # candidate's skills transfer credit toward?
-        transferable_targets = set()
-        for cand_skill in candidate_skills:
-            transferable_targets.update(t.lower() for t in get_transferable_skills(cand_skill))
-
         matched = []
-        transferred = []
         missing = []
-        credit = 0.0
         for skill in job_skills:
-            skill_lower = skill.lower()
-            if skill_lower in candidate_skills:
+            if skill.lower() in candidate_skills:
                 matched.append(skill)
-                credit += 1.0
-            elif skill_lower in transferable_targets:
-                transferred.append(skill)
-                credit += TRANSFERABLE_CREDIT
             else:
                 missing.append(skill)
 
-        score = round((credit / len(job_skills)) * 100)
-        if matched and transferred:
-            explanation = f"{len(matched)}/{len(job_skills)} required skills matched directly, plus related experience in {', '.join(transferred)}"
-        elif matched:
-            explanation = f"{len(matched)}/{len(job_skills)} required skills matched"
-        elif transferred:
-            explanation = f"Related experience found for {', '.join(transferred)}, though not an exact skill match"
-        else:
-            explanation = "None of this job's listed skills were found on your profile/CV"
+        score = round((len(matched) / len(job_skills)) * 100)
+        explanation = (
+            f"{len(matched)}/{len(job_skills)} required skills matched"
+            if matched
+            else "None of this job's listed skills were found on your profile/CV"
+        )
         return {
             "score": score,
             "matched": matched,
-            "transferred": transferred,
             "missing_key_skills": missing,
             "explanation": explanation,
         }
@@ -190,7 +165,6 @@ def compute_match(job: dict, profile: dict) -> dict:
     overall = sum(components[dim]["score"] * weight for dim, weight in DIMENSION_WEIGHTS.items())
 
     reasons = list(components["skills"].get("matched", [])[:4])
-    reasons.extend(components["skills"].get("transferred", [])[:2])
     reasons.extend(components["role"].get("matched", [])[:2])
 
     target_match = _target_company_match(job, profile)
@@ -199,14 +173,6 @@ def compute_match(job: dict, profile: dict) -> dict:
         overall = min(100, overall + target_match["bonus"])
         tier_label = target_match["tier"].replace("_", " ").title()
         reasons.append(f"Target company ({tier_label}): {target_match['name']}")
-
-    candidate_skills = list(_candidate_skill_set(profile))
-    top_paths = classify_career_paths(candidate_skills, limit=1)
-    if top_paths:
-        top_role = top_paths[0]["role"]
-        job_title = _normalize(job.get("title", ""))
-        if any(term.lower() in job_title for term in expand_role_terms(top_role)):
-            reasons.append(f"Matches your top career path: {top_role}")
 
     reasons = list(dict.fromkeys(reasons))[:8]
 

@@ -25,14 +25,6 @@ MAX_JOBS_PER_ALERT = 20
 EMAIL_RETRY_DELAYS_SECONDS = [3, 8]  # 3 attempts total: first try, then these two
 CRITERIA_OVERRIDE_FIELDS = ["roles", "industry", "location", "job_type", "match_source"]
 
-# The synthetic default alert (used for users with no explicit alert_configs)
-# preserves the exact legacy behavior: widen the freshness window if the strict
-# one turns up too few jobs. Explicit user-created alerts don't get this - if
-# someone picks "Last 7 days" on purpose, silently widening it to 30 without
-# telling them would contradict what they configured.
-MIN_JOBS_BEFORE_FALLBACK = 10
-FALLBACK_FRESHNESS_DAYS = 30
-
 
 def _send_email_with_retry(recipient: str, jobs: list, alert_name) -> None:
     """A single transient SMTP hiccup shouldn't cost a real match its email -
@@ -88,8 +80,7 @@ def _company_mode_matches(jobs: list, profile: dict, target_companies: list) -> 
 
 def _run_one_alert(user: dict, base_profile: dict, alert_id, alert_name, criteria: dict) -> list:
     freshness_days = criteria.get("freshness_days", 7)
-    is_synthetic_default = alert_id is None
-    jobs = fetch_fresh_jobs(freshness_days, allow_fallback=is_synthetic_default)
+    jobs = fetch_fresh_jobs(freshness_days)
 
     sent_ids = {
         a["job_id"]

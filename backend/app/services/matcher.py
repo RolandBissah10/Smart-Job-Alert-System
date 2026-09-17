@@ -1,7 +1,6 @@
 import re
 
 from app.services.profile_utils import get_profile_skills, cached_on_profile
-from app.services.role_synonyms import expand_roles
 from app.services.scoring import compute_match
 from app.services.text_utils import normalize
 
@@ -48,7 +47,7 @@ def _get_profile_skills(profile: dict) -> list:
 def get_profile_roles(profile: dict) -> list:
     if get_match_source(profile) == "cv":
         return []
-    return cached_on_profile(profile, "matcher_roles", lambda: expand_roles(profile.get("roles", [])))
+    return profile.get("roles") or []
 
 
 def _get_profile_industry_terms(profile: dict) -> list:
