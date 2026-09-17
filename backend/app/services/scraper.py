@@ -458,6 +458,84 @@ def _fetch_corporategh():
     return jobs
 
 
+def _fetch_jobwebghana():
+    # The homepage's job list is populated by a widget rather than plain
+    # server-rendered links, but the site exposes a standard WP Job Manager
+    # RSS feed with a direct link to every posting - and those posting pages
+    # carry full JobPosting JSON-LD (title/company/location/date), so this
+    # reuses the same detail-page parser as every other JSON-LD source.
+    jobs = []
+    try:
+        r = requests.get("https://jobwebghana.com/feed/?post_type=job_listing", headers=HEADERS, timeout=TIMEOUT)
+        r.raise_for_status()
+        root = ET.fromstring(r.content)
+        links = [(item.findtext("link", "").strip(), "") for item in root.findall(".//item")]
+        links = [link for link in links if link[0]][:25]
+        jobs = _fetch_detail_pages_parallel(links, "jobwebghana", fallback_location="Ghana")
+        logger.info(f"JobWeb Ghana: {len(jobs)} jobs")
+    except Exception as e:
+        logger.error(f"JobWeb Ghana failed: {e}")
+    return jobs
+
+
+def _parse_myjobmag_detail(url):
+    # No JSON-LD on this site, but every detail page's <title> follows a
+    # fixed "{title} at {company} {month}, {year} | MyJobMag" pattern, and
+    # the meta description names the city - cheaper and more reliable here
+    # than guessing at CSS selectors that could change.
+    try:
+        soup = _fetch_soup(url)
+        title_tag = soup.find("title")
+        raw_title = _clean_text(title_tag.get_text()) if title_tag else ""
+        match = re.match(r"^(.*?) at (.*?) \w+,\s*\d{4}\s*\|", raw_title)
+        if not match:
+            return None
+        title, company = match.group(1).strip(), match.group(2).strip()
+
+        location = "Ghana"
+        meta = soup.find("meta", {"name": "description"})
+        if meta and meta.get("content"):
+            loc_match = re.search(r"\bin ([A-Za-z\s]+?), Ghana\b", meta["content"])
+            if loc_match:
+                location = f"{loc_match.group(1).strip()}, Ghana"
+
+        return {
+            "title": title,
+            "company": company,
+            "location": location,
+            "url": url,
+            "source": "myjobmag_ghana",
+            "description": _extract_description_block(soup),
+            "posted_date": None,
+            "date_is_estimated": True,
+        }
+    except Exception as e:
+        logger.error(f"MyJobMag Ghana detail parse failed for {url}: {e}")
+        return None
+
+
+def _fetch_myjobmag_ghana():
+    jobs = []
+    try:
+        soup = _fetch_soup("https://www.myjobmagghana.com/jobs")
+        links = _collect_links(
+            soup,
+            "https://www.myjobmagghana.com",
+            lambda href: href.startswith("/job/"),
+            limit=25,
+        )
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            futures = [executor.submit(_parse_myjobmag_detail, url) for url, _ in links]
+            for future in as_completed(futures):
+                job = future.result()
+                if job:
+                    jobs.append(job)
+        logger.info(f"MyJobMag Ghana: {len(jobs)} jobs")
+    except Exception as e:
+        logger.error(f"MyJobMag Ghana failed: {e}")
+    return jobs
+
+
 def _fetch_effyis_group():
     # No dedicated job-listing index page exists on this site - individual
     # /careers/{slug} postings are only linked from the site-wide nav/footer,
@@ -966,6 +1044,8 @@ def fetch_jobs():
         _fetch_jobberman_ghana,
         _fetch_glmis_ghana,
         _fetch_corporategh,
+        _fetch_jobwebghana,
+        _fetch_myjobmag_ghana,
         _fetch_effyis_group,
         _fetch_africarrieres_ghana,
         _fetch_arc_ghana,
