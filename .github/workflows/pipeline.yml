@@ -2,9 +2,12 @@ name: Run job alert pipeline
 
 on:
   schedule:
-    # Hourly. Adjust to taste - this is independent of any app config, it's
-    # purely how often this workflow calls the backend.
-    - cron: "0 * * * *"
+    # Hourly, offset to :17 rather than :00 - GitHub explicitly documents that
+    # schedules firing at the top of the hour compete with everyone else's and
+    # get delayed/dropped under load. Confirmed via the Actions API: this
+    # workflow's runs were landing 2-6 hours apart instead of hourly before
+    # this change.
+    - cron: "17 * * * *"
   workflow_dispatch: {}
 
 jobs:
