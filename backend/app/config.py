@@ -10,7 +10,16 @@ def _parse_csv_env(name: str, default: str = "") -> list[str]:
     return [item for item in values if item]
 
 MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017")
-JWT_SECRET = os.getenv("JWT_SECRET", "change-this-secret")
+
+JWT_SECRET = os.getenv("JWT_SECRET")
+if not JWT_SECRET:
+    # A hard-coded fallback here would mean a deploy that forgot to set this
+    # silently signs every token with a secret published in this file's own
+    # git history - fail loudly at startup instead of running insecurely.
+    raise RuntimeError(
+        "JWT_SECRET environment variable must be set - refusing to start "
+        "with a fallback secret that would be the same for every deployment."
+    )
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY", "")
 # Must be the exact address verified as a Single Sender in the SendGrid
