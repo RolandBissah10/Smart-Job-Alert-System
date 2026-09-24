@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Header, UploadFile, File, Body
+from fastapi import APIRouter, HTTPException, Header, Request, UploadFile, File, Body
 from app.models.user import (
     UserSignup, UserProfile, ChangePasswordRequest, ChangeEmailRequest,
     DeleteAccountRequest, AlertsPauseUpdate,
@@ -6,12 +6,16 @@ from app.models.user import (
 from app.db.database import users_collection, alert_configs_collection, alerts_collection, saved_jobs_collection
 from app.auth_utils import hash_password, verify_password
 from app.auth import require_auth
+from app.cache import cache
 from app.services.cv_parser import extract_text_from_cv, parse_cv
 from app.services.profile_utils import profile_has_structured_data, get_profile_skills
 from app.services.career_paths import classify_career_paths
 from datetime import datetime
 
 router = APIRouter(prefix="/users", tags=["Users"])
+
+SIGNUP_MAX_ATTEMPTS = 5
+SIGNUP_WINDOW_SECONDS = 60 * 60
 
 
 def serialize_user(user):
@@ -47,7 +51,14 @@ def serialize_user(user):
 
 
 @router.post("/signup")
-def signup(user: UserSignup):
+def signup(user: UserSignup, request: Request):
+    ip = request.client.host if request.client else "unknown"
+    ip_key = f"signup_ip:{ip}"
+    attempts = cache.get(ip_key) or 0
+    if attempts >= SIGNUP_MAX_ATTEMPTS:
+        raise HTTPException(status_code=429, detail="Too many signup attempts from this network. Please try again later.")
+    cache.set(ip_key, attempts + 1, ttl_seconds=SIGNUP_WINDOW_SECONDS)
+
     existing = users_collection.find_one({"email": user.email})
     if existing:
         raise HTTPException(status_code=409, detail="This email is already registered. Please log in or use a different email.")

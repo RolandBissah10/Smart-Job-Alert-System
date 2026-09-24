@@ -16,15 +16,28 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 GENERIC_RESET_MESSAGE = "If an account exists for that email, a reset link has been sent."
 
 
+LOGIN_MAX_ATTEMPTS = 10
+LOGIN_WINDOW_SECONDS = 15 * 60
+
+
 @router.post("/login")
-def login(credentials: UserLogin):
+def login(credentials: UserLogin, request: Request):
+    ip = request.client.host if request.client else "unknown"
+    ip_key = f"login_ip:{ip}"
+    attempts = cache.get(ip_key) or 0
+    if attempts >= LOGIN_MAX_ATTEMPTS:
+        raise HTTPException(status_code=429, detail="Too many login attempts. Please try again in a few minutes.")
+    cache.set(ip_key, attempts + 1, ttl_seconds=LOGIN_WINDOW_SECONDS)
+
     user = users_collection.find_one({"email": credentials.email})
-    
+
     if not user:
         raise HTTPException(status_code=401, detail="No account found with this email address")
-    
+
     if not verify_password(credentials.password, user["password"]):
         raise HTTPException(status_code=401, detail="Incorrect password")
+
+    cache.delete(ip_key)
 
     access_token = create_access_token({"email": credentials.email})
     refresh_token = create_refresh_token({"email": credentials.email})
