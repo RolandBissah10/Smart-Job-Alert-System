@@ -4,14 +4,14 @@ import re
 import logging
 from datetime import datetime
 
-from fastapi import APIRouter, HTTPException, Header, Query
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Header, Query
 from app.services.scraper import fetch_jobs, save_jobs
 from app.services.matcher import score_jobs_for_user, profile_has_match_criteria
 from app.services.job_filters import fetch_fresh_jobs
 from app.services.profile_utils import build_match_profile
 from app.services.alert_pipeline import process_user_alerts
 from app.tasks.scheduler import _cleanup_stale_jobs
-from app.db.database import users_collection, jobs_collection
+from app.db.database import users_collection, jobs_collection, pipeline_status_collection
 from app.auth import require_auth
 from app.cache import cache
 from app.config import PIPELINE_SECRET
@@ -122,43 +122,114 @@ def get_job_feed(
     return result
 
 
+PIPELINE_STALE_SECONDS = 10 * 60  # a run stuck past this is treated as crashed, not actually in progress
+
+
+def _pipeline_request_authorized(x_pipeline_secret: str, authorization: str) -> bool:
+    """Either the GitHub Actions cron secret or a logged-in dashboard user - never
+    both required, and (unlike before) never skipped just because the secret
+    happens to be unset."""
+    if PIPELINE_SECRET and hmac.compare_digest(x_pipeline_secret or "", PIPELINE_SECRET):
+        return True
+    if authorization:
+        try:
+            require_auth(authorization)
+            return True
+        except HTTPException:
+            return False
+    return False
+
+
 @router.post("/run-pipeline")
-def run_pipeline(x_pipeline_secret: str = Header(None)):
-    # If PIPELINE_SECRET isn't configured (e.g. local dev), stay open exactly as
-    # before - only enforce the check once a real secret is actually set.
-    if PIPELINE_SECRET and not hmac.compare_digest(x_pipeline_secret or "", PIPELINE_SECRET):
+def run_pipeline(
+    background_tasks: BackgroundTasks,
+    x_pipeline_secret: str = Header(None),
+    authorization: str = Header(None),
+):
+    if not _pipeline_request_authorized(x_pipeline_secret, authorization):
         raise HTTPException(status_code=401, detail="Invalid or missing pipeline secret")
 
+    now = datetime.utcnow()
+    status = pipeline_status_collection.find_one({"_id": "current"})
+    if status and status.get("running"):
+        started_at = status.get("started_at")
+        stale = not started_at or (now - started_at).total_seconds() > PIPELINE_STALE_SECONDS
+        if not stale:
+            return {"status": "already_running", "started_at": started_at}
+        logger.warning("Previous pipeline run never reported completion - treating as crashed and starting a new one")
+
+    pipeline_status_collection.update_one(
+        {"_id": "current"},
+        {"$set": {"running": True, "started_at": now, "error": None}},
+        upsert=True,
+    )
+    background_tasks.add_task(_run_pipeline_job)
+    return {"status": "started", "started_at": now}
+
+
+def _run_pipeline_job():
+    """The actual scrape/match/send work, run after the HTTP response has
+    already gone out - this used to run inline in the request handler and took
+    76-155s in practice, holding a worker thread the whole time and routinely
+    exceeding callers' HTTP timeouts."""
     start = time.perf_counter()
+    error = None
+    matches = 0
+    new_jobs_count = 0
+    active_users_count = 0
     try:
-        _cleanup_stale_jobs()
-    except Exception as e:
-        logger.error(f"Cleanup error: {e}")
-
-    jobs = fetch_jobs()
-    new_jobs = save_jobs(jobs)
-    active_users = list(users_collection.find({"is_active": True, "alerts_paused": {"$ne": True}}))
-
-    delivered = []
-    for user in active_users:
         try:
-            alert_results = process_user_alerts(user)
+            _cleanup_stale_jobs()
         except Exception as e:
-            logger.error(f"Alert processing failed for {user['email']}: {e}")
-            continue
+            logger.error(f"Cleanup error: {e}")
 
-        for result in alert_results:
-            for job in result["jobs_sent"]:
-                delivered.append({"email": user["email"], "job_url": job.get("url")})
+        new_jobs_count = len(save_jobs(fetch_jobs()))
+        active_users = list(users_collection.find({"is_active": True, "alerts_paused": {"$ne": True}}))
+        active_users_count = len(active_users)
 
-    duration_seconds = round(time.perf_counter() - start, 2)
-    logger.info(f"Manual pipeline completed in {duration_seconds}s")
-    perf_monitor.record_pipeline_time(duration_seconds, source="manual")
+        for user in active_users:
+            try:
+                alert_results = process_user_alerts(user)
+            except Exception as e:
+                logger.error(f"Alert processing failed for {user['email']}: {e}")
+                continue
+            matches += sum(len(result["jobs_sent"]) for result in alert_results)
+    except Exception as e:
+        logger.error(f"Pipeline run failed: {e}")
+        error = str(e)
+    finally:
+        duration_seconds = round(time.perf_counter() - start, 2)
+        logger.info(f"Pipeline completed in {duration_seconds}s")
+        perf_monitor.record_pipeline_time(duration_seconds, source="manual")
+        pipeline_status_collection.update_one(
+            {"_id": "current"},
+            {"$set": {
+                "running": False,
+                "finished_at": datetime.utcnow(),
+                "error": error,
+                # Aggregate only - the previous synchronous response included a
+                # per-match {email, job_url} list, readable by anyone who could
+                # reach this endpoint (which, with PIPELINE_SECRET unset, was
+                # effectively anyone). Never expose other users' emails here.
+                "last_result": {
+                    "matches": matches,
+                    "new_jobs_fetched": new_jobs_count,
+                    "active_users_checked": active_users_count,
+                    "duration_seconds": duration_seconds,
+                },
+            }},
+            upsert=True,
+        )
 
+
+@router.get("/pipeline-status")
+def get_pipeline_status(authorization: str = Header(None)):
+    require_auth(authorization)
+    status = pipeline_status_collection.find_one({"_id": "current"}) or {}
     return {
-        "delivered": delivered,
-        "matches": len(delivered),
-        "new_jobs_fetched": len(new_jobs),
-        "active_users_checked": len(active_users),
-        "duration_seconds": duration_seconds,
+        "running": status.get("running", False),
+        "started_at": status.get("started_at"),
+        "finished_at": status.get("finished_at"),
+        "error": status.get("error"),
+        "last_result": status.get("last_result"),
     }

@@ -1,10 +1,25 @@
 import { useCallback, useEffect, useState } from 'react';
-import { getDashboard, runPipeline } from '../../services/api';
+import { getDashboard, runPipeline, getPipelineStatus } from '../../services/api';
 import { Briefcase, Heart, Bell, TrendingUp, AlertCircle, RefreshCw } from 'lucide-react';
 
 // Matches the backend's job-feed cache TTL, so a poll always has a real
 // chance of seeing fresh data rather than re-fetching the same cached result.
 const REFRESH_INTERVAL = 5 * 60 * 1000;
+
+// The pipeline now runs as a backend background task (it was blocking a whole
+// request/worker for 76-155s), so the button polls for real completion
+// instead of the old fire-and-immediately-done request/response.
+const PIPELINE_POLL_INTERVAL_MS = 3000;
+const PIPELINE_POLL_MAX_ATTEMPTS = 100; // ~5 minutes
+
+async function waitForPipelineToFinish() {
+  for (let attempt = 0; attempt < PIPELINE_POLL_MAX_ATTEMPTS; attempt++) {
+    const status = await getPipelineStatus();
+    if (!status.running) return status;
+    await new Promise((resolve) => setTimeout(resolve, PIPELINE_POLL_INTERVAL_MS));
+  }
+  throw new Error('Timed out waiting for the pipeline to finish');
+}
 
 export default function Overview({ onNavigate, refreshKey }) {
   const [data, setData] = useState(null);
@@ -46,8 +61,16 @@ export default function Overview({ onNavigate, refreshKey }) {
     setRefreshMsg('');
     try {
       await runPipeline();
+      const status = await waitForPipelineToFinish();
       await loadDashboard();
-      setRefreshMsg('Pipeline completed and dashboard updated.');
+      if (status.error) {
+        setRefreshMsg(`Pipeline failed: ${status.error}`);
+      } else {
+        const { matches = 0, new_jobs_fetched = 0 } = status.last_result || {};
+        setRefreshMsg(
+          `Pipeline completed - ${new_jobs_fetched} new job${new_jobs_fetched === 1 ? '' : 's'} scraped, ${matches} alert${matches === 1 ? '' : 's'} sent.`
+        );
+      }
     } catch (err) {
       setRefreshMsg(`Pipeline failed: ${err.message}`);
     } finally {
@@ -90,7 +113,7 @@ export default function Overview({ onNavigate, refreshKey }) {
         )}
       </div>
       {refreshMsg && (
-        <p className={`alert ${refreshMsg.startsWith('Refresh failed') ? 'alert-error' : 'alert-success'}`}>
+        <p className={`alert ${refreshMsg.toLowerCase().includes('failed') ? 'alert-error' : 'alert-success'}`}>
           {refreshMsg}
         </p>
       )}

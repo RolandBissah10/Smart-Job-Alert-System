@@ -218,6 +218,10 @@ export function runPipeline() {
   });
 }
 
+export function getPipelineStatus() {
+  return request('/jobs/pipeline-status');
+}
+
 export function saveJob(jobId) {
   return request('/saved-jobs/', {
     method: 'POST',

@@ -12,6 +12,7 @@ jobs_collection = db["jobs"]
 alerts_collection = db["alerts"]
 alert_configs_collection = db["alert_configs"]
 saved_jobs_collection = db["saved_jobs"]
+pipeline_status_collection = db["pipeline_status"]
 
 try:
     users_collection.create_index("email", unique=True)
